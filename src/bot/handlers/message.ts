@@ -120,25 +120,39 @@ export const messageHandler = async (ctx: BotContext) => {
         fileType = 'text/plain';
 
         // Отправляем файл пользователю
-        await ctx.replyWithDocument(
-          { source: filePath, filename: fileName },
-          {
-            caption: `📄 Ответ сохранен в файл из-за большого размера\n\n💬 Краткое содержание:\n${response.content.substring(0, 500)}${response.content.length > 500 ? '...' : ''}`,
-            parse_mode: 'Markdown'
+        const caption = `📄 Ответ сохранен в файл из-за большого размера\n\n💬 Краткое содержание:\n${response.content.substring(0, 500)}${response.content.length > 500 ? '...' : ''}`;
+        
+        try {
+          await ctx.replyWithDocument(
+            { source: filePath, filename: fileName },
+            {
+              caption,
+              parse_mode: 'Markdown'
+            }
+          );
+        } catch (error) {
+          // Если ошибка парсинга Markdown в caption, отправляем без разметки
+          if (error instanceof Error && error.message.includes("can't parse entities")) {
+            await ctx.replyWithDocument(
+              { source: filePath, filename: fileName },
+              { caption }
+            );
+          } else {
+            throw error;
           }
-        );
+        }
       } else {
         // Отправляем обычный текстовый ответ
         // Разбиваем длинные сообщения на части (лимит Telegram ~4096 символов)
         const maxMessageLength = 4000;
         if (response.content.length <= maxMessageLength) {
-          await ctx.reply(response.content, { parse_mode: 'Markdown' });
+          await sendMessageWithFallback(ctx, response.content);
         } else {
           const chunks = splitMessage(response.content, maxMessageLength);
           for (let i = 0; i < chunks.length; i++) {
             const chunk = chunks[i];
             const prefix = i === 0 ? '' : `📄 Часть ${i + 1}/${chunks.length}:\n\n`;
-            await ctx.reply(prefix + chunk, { parse_mode: 'Markdown' });
+            await sendMessageWithFallback(ctx, prefix + chunk);
             
             // Небольшая задержка между сообщениями
             if (i < chunks.length - 1) {
@@ -233,6 +247,26 @@ export const messageHandler = async (ctx: BotContext) => {
     await ctx.reply('❌ Произошла неожиданная ошибка. Попробуйте еще раз позже.');
   }
 };
+
+// Функция для отправки сообщения с fallback на обычный текст при ошибке парсинга Markdown
+async function sendMessageWithFallback(ctx: BotContext, text: string): Promise<void> {
+  try {
+    // Сначала пытаемся отправить с Markdown
+    await ctx.reply(text, { parse_mode: 'Markdown' });
+  } catch (error) {
+    // Если ошибка парсинга Markdown, отправляем как обычный текст
+    if (error instanceof Error && error.message.includes("can't parse entities")) {
+      logger.warn('Markdown parsing failed, sending as plain text', {
+        error: error.message,
+        textLength: text.length
+      });
+      await ctx.reply(text);
+    } else {
+      // Если другая ошибка, пробрасываем дальше
+      throw error;
+    }
+  }
+}
 
 // Функция для разбивки длинных сообщений на части
 function splitMessage(text: string, maxLength: number): string[] {
