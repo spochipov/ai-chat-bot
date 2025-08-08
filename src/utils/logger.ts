@@ -13,6 +13,20 @@ const logFormat = winston.format.combine(
   winston.format.json()
 );
 
+// Безопасная сериализация объектов с циклическими ссылками
+const safeStringify = (obj: any): string => {
+  const seen = new WeakSet();
+  return JSON.stringify(obj, (_key, val) => {
+    if (val != null && typeof val === 'object') {
+      if (seen.has(val)) {
+        return '[Circular]';
+      }
+      seen.add(val);
+    }
+    return val;
+  });
+};
+
 // Форматирование для консоли в development
 const consoleFormat = winston.format.combine(
   winston.format.colorize(),
@@ -22,7 +36,11 @@ const consoleFormat = winston.format.combine(
   winston.format.printf(({ timestamp, level, message, ...meta }) => {
     let msg = `${timestamp} [${level}]: ${message}`;
     if (Object.keys(meta).length > 0) {
-      msg += ` ${JSON.stringify(meta)}`;
+      try {
+        msg += ` ${safeStringify(meta)}`;
+      } catch (error) {
+        msg += ` [Error serializing metadata: ${error instanceof Error ? error.message : 'Unknown error'}]`;
+      }
     }
     return msg;
   })

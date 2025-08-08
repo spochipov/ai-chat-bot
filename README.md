@@ -63,7 +63,7 @@ BOT_TOKEN=your_telegram_bot_token
 
 # OpenRouter API
 OPENROUTER_API_KEY=your_openrouter_api_key
-OPENROUTER_MODEL=openai/gpt-4
+OPENROUTER_MODEL=openai/gpt-4o
 OPENROUTER_BASE_URL=https://openrouter.ai/api/v1
 
 # Database

@@ -265,7 +265,7 @@ class OpenRouterService {
   public static async analyzeImage(
     imageUrl: string,
     prompt: string = 'Describe this image in detail',
-    model: string = 'openai/gpt-4-vision-preview'
+    model: string = 'openai/gpt-4o'
   ): Promise<{
     content: string;
     usage: {
@@ -334,6 +334,7 @@ class OpenRouterService {
     // Примерные цены для GPT-4 (в долларах за 1000 токенов)
     const pricing: { [key: string]: { prompt: number; completion: number } } = {
       'openai/gpt-4': { prompt: 0.03, completion: 0.06 },
+      'openai/gpt-4o': { prompt: 0.005, completion: 0.015 },
       'openai/gpt-4-turbo': { prompt: 0.01, completion: 0.03 },
       'openai/gpt-3.5-turbo': { prompt: 0.001, completion: 0.002 },
     };

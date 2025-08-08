@@ -54,7 +54,7 @@ POSTGRES_USER=postgres
 POSTGRES_PASSWORD=your_strong_password_here
 
 # Остальные параметры можно оставить по умолчанию
-OPENROUTER_MODEL=openai/gpt-4
+OPENROUTER_MODEL=openai/gpt-4o
 DATABASE_URL=postgresql://postgres:your_strong_password_here@postgres:5432/ai_chat_bot
 REDIS_URL=redis://redis:6379
 REDIS_PASSWORD=your_redis_password_here
