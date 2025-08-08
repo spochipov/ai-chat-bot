@@ -1,8 +1,8 @@
 import winston from 'winston';
 import DailyRotateFile from 'winston-daily-rotate-file';
 
-const logLevel = process.env.LOG_LEVEL || 'info';
-const nodeEnv = process.env.NODE_ENV || 'development';
+const logLevel = process.env['LOG_LEVEL'] || 'info';
+const nodeEnv = process.env['NODE_ENV'] || 'development';
 
 // Форматирование логов
 const logFormat = winston.format.combine(

@@ -51,7 +51,7 @@ async function main() {
     await DatabaseService.initialize();
     
     // Получаем ID администратора из аргументов командной строки или переменной окружения
-    const adminId = process.argv[2] || process.env.ADMIN_TELEGRAM_ID;
+    const adminId = process.argv[2] || process.env['ADMIN_TELEGRAM_ID'];
     
     if (!adminId) {
       console.error('Error: Admin ID is required');

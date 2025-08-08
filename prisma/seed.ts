@@ -46,7 +46,7 @@ async function main() {
     }
 
     // Создание первого ключа доступа для администратора (если указан ADMIN_TELEGRAM_ID)
-    const adminTelegramId = process.env.ADMIN_TELEGRAM_ID;
+    const adminTelegramId = process.env['ADMIN_TELEGRAM_ID'];
     
     if (adminTelegramId) {
       // Генерируем ключ доступа для админа
