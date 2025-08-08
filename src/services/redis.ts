@@ -9,13 +9,17 @@ class RedisService {
     const redisUrl = process.env.REDIS_URL || 'redis://localhost:6379';
     const redisPassword = process.env.REDIS_PASSWORD;
 
-    this.client = new Redis(redisUrl, {
-      password: redisPassword,
-      retryDelayOnFailover: 100,
+    const options: any = {
       enableReadyCheck: true,
       maxRetriesPerRequest: 3,
       lazyConnect: true,
-    });
+    };
+
+    if (redisPassword) {
+      options.password = redisPassword;
+    }
+
+    this.client = new Redis(redisUrl, options);
 
     // Обработка событий Redis
     this.client.on('connect', () => {
@@ -137,9 +141,10 @@ class RedisService {
 
     if (currentCount >= limit) {
       const oldestRequest = await client.zrange(key, 0, 0, 'WITHSCORES');
-      const resetTime = oldestRequest.length > 0 
-        ? parseInt(oldestRequest[1] as string) + window * 1000 
-        : now + window * 1000;
+      const resetTime =
+        oldestRequest.length > 0
+          ? parseInt(oldestRequest[1] as string) + window * 1000
+          : now + window * 1000;
 
       return {
         allowed: false,
@@ -167,7 +172,7 @@ class RedisService {
   ): Promise<void> {
     const client = RedisService.getClient();
     const serializedValue = JSON.stringify(value);
-    
+
     if (ttl) {
       await client.setex(key, ttl, serializedValue);
     } else {
@@ -232,10 +237,7 @@ class RedisService {
   }
 
   // Методы для работы с очередями (если понадобится)
-  public static async pushToQueue(
-    queueName: string,
-    data: any
-  ): Promise<void> {
+  public static async pushToQueue(queueName: string, data: any): Promise<void> {
     const client = RedisService.getClient();
     await client.lpush(queueName, JSON.stringify(data));
   }

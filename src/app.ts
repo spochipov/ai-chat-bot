@@ -1,18 +1,18 @@
+// Загрузка переменных окружения должна быть первой
 import dotenv from 'dotenv';
+dotenv.config();
+
 import { bot } from './bot';
 import { logger } from './utils/logger';
 import { DatabaseService } from './services/database';
 import { RedisService } from './services/redis';
-import express from 'express';
-
-// Загрузка переменных окружения
-dotenv.config();
+import express, { Request, Response } from 'express';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 // Middleware для health check
-app.get('/health', (req, res) => {
+app.get('/health', (_req: Request, res: Response) => {
   res.status(200).json({ status: 'OK', timestamp: new Date().toISOString() });
 });
 

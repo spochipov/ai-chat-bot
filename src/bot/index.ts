@@ -46,13 +46,14 @@ if (!botToken) {
 const bot = new Telegraf<BotContext>(botToken);
 
 // Настройка сессий
-bot.use(session({
-  defaultSession: () => ({
-    user: undefined,
-    awaitingAccessKey: false,
-    awaitingKeyDeactivation: false,
-  }),
-}));
+bot.use(
+  session({
+    defaultSession: () => ({
+      awaitingAccessKey: false,
+      awaitingKeyDeactivation: false,
+    }),
+  })
+);
 
 // Подключение middleware
 bot.use(loggingMiddleware);
@@ -94,10 +95,12 @@ bot.catch((err, ctx) => {
     chatId: ctx.chat?.id,
     updateType: ctx.updateType,
   });
-  
-  ctx.reply('Произошла ошибка при обработке вашего запроса. Попробуйте позже.').catch(() => {
-    botLogger.error('Failed to send error message to user');
-  });
+
+  ctx
+    .reply('Произошла ошибка при обработке вашего запроса. Попробуйте позже.')
+    .catch(() => {
+      botLogger.error('Failed to send error message to user');
+    });
 });
 
 // Graceful shutdown

@@ -6,17 +6,6 @@ interface OpenRouterMessage {
   content: string;
 }
 
-interface OpenRouterRequest {
-  model: string;
-  messages: OpenRouterMessage[];
-  max_tokens?: number;
-  temperature?: number;
-  top_p?: number;
-  frequency_penalty?: number;
-  presence_penalty?: number;
-  stream?: boolean;
-}
-
 interface OpenRouterResponse {
   id: string;
   object: string;
@@ -75,7 +64,8 @@ class OpenRouterService {
 
   private constructor() {
     this.apiKey = process.env.OPENROUTER_API_KEY || '';
-    this.baseURL = process.env.OPENROUTER_BASE_URL || 'https://openrouter.ai/api/v1';
+    this.baseURL =
+      process.env.OPENROUTER_BASE_URL || 'https://openrouter.ai/api/v1';
     this.defaultModel = process.env.OPENROUTER_MODEL || 'openai/gpt-4';
 
     if (!this.apiKey) {
@@ -85,7 +75,7 @@ class OpenRouterService {
     this.client = axios.create({
       baseURL: this.baseURL,
       headers: {
-        'Authorization': `Bearer ${this.apiKey}`,
+        Authorization: `Bearer ${this.apiKey}`,
         'Content-Type': 'application/json',
         'HTTP-Referer': 'https://github.com/spochipov/ai-chat-bot',
         'X-Title': 'AI Chat Bot',
@@ -95,7 +85,7 @@ class OpenRouterService {
 
     // Настройка интерцепторов для логирования
     this.client.interceptors.request.use(
-      (config) => {
+      config => {
         apiLogger.debug('OpenRouter request', {
           method: config.method,
           url: config.url,
@@ -103,7 +93,7 @@ class OpenRouterService {
         });
         return config;
       },
-      (error) => {
+      error => {
         apiLogger.error('OpenRouter request error', error);
         return Promise.reject(error);
       }
@@ -117,7 +107,7 @@ class OpenRouterService {
         });
         return response;
       },
-      (error) => {
+      error => {
         apiLogger.error('OpenRouter response error', {
           status: error.response?.status,
           data: error.response?.data,
@@ -156,21 +146,34 @@ class OpenRouterService {
     model: string;
   }> {
     const instance = OpenRouterService.getInstance();
-    
-    const request: OpenRouterRequest = {
+
+    const requestData: any = {
       model: options.model || instance.defaultModel,
       messages,
-      max_tokens: options.maxTokens || parseInt(process.env.DEFAULT_MAX_TOKENS || '4000'),
-      temperature: options.temperature || parseFloat(process.env.DEFAULT_TEMPERATURE || '0.7'),
-      top_p: options.topP,
-      frequency_penalty: options.frequencyPenalty,
-      presence_penalty: options.presencePenalty,
+      max_tokens:
+        options.maxTokens || parseInt(process.env.DEFAULT_MAX_TOKENS || '4000'),
+      temperature:
+        options.temperature ||
+        parseFloat(process.env.DEFAULT_TEMPERATURE || '0.7'),
       stream: false,
     };
 
+    if (options.topP !== undefined) {
+      requestData.top_p = options.topP;
+    }
+    if (options.frequencyPenalty !== undefined) {
+      requestData.frequency_penalty = options.frequencyPenalty;
+    }
+    if (options.presencePenalty !== undefined) {
+      requestData.presence_penalty = options.presencePenalty;
+    }
+
     try {
-      const response = await instance.client.post<OpenRouterResponse>('/chat/completions', request);
-      
+      const response = await instance.client.post<OpenRouterResponse>(
+        '/chat/completions',
+        requestData
+      );
+
       const choice = response.data.choices[0];
       if (!choice || !choice.message) {
         throw new Error('Invalid response from OpenRouter API');
@@ -187,17 +190,19 @@ class OpenRouterService {
       };
     } catch (error: any) {
       apiLogger.error('Failed to send message to OpenRouter', error);
-      
+
       if (error.response?.status === 401) {
         throw new Error('Invalid OpenRouter API key');
       } else if (error.response?.status === 429) {
         throw new Error('Rate limit exceeded. Please try again later.');
       } else if (error.response?.status === 400) {
-        throw new Error(`Bad request: ${error.response.data?.error?.message || 'Invalid request'}`);
+        throw new Error(
+          `Bad request: ${error.response.data?.error?.message || 'Invalid request'}`
+        );
       } else if (error.response?.status >= 500) {
         throw new Error('OpenRouter service is temporarily unavailable');
       }
-      
+
       throw new Error(`OpenRouter API error: ${error.message}`);
     }
   }
@@ -208,10 +213,11 @@ class OpenRouterService {
     usage: number;
   }> {
     const instance = OpenRouterService.getInstance();
-    
+
     try {
-      const response = await instance.client.get<OpenRouterBalance>('/auth/key');
-      
+      const response =
+        await instance.client.get<OpenRouterBalance>('/auth/key');
+
       return {
         credits: response.data.data.credits,
         usage: response.data.data.usage,
@@ -223,22 +229,24 @@ class OpenRouterService {
   }
 
   // Метод для получения списка доступных моделей
-  public static async getModels(): Promise<Array<{
-    id: string;
-    name: string;
-    description: string;
-    pricing: {
-      prompt: string;
-      completion: string;
-    };
-    contextLength: number;
-    modality: string;
-  }>> {
+  public static async getModels(): Promise<
+    Array<{
+      id: string;
+      name: string;
+      description: string;
+      pricing: {
+        prompt: string;
+        completion: string;
+      };
+      contextLength: number;
+      modality: string;
+    }>
+  > {
     const instance = OpenRouterService.getInstance();
-    
+
     try {
       const response = await instance.client.get<OpenRouterModels>('/models');
-      
+
       return response.data.data.map(model => ({
         id: model.id,
         name: model.name,
@@ -298,7 +306,12 @@ class OpenRouterService {
       },
     ];
 
-    return OpenRouterService.sendMessage(messages, { model });
+    const options: any = {};
+    if (model) {
+      options.model = model;
+    }
+
+    return OpenRouterService.sendMessage(messages, options);
   }
 
   // Утилитарные методы
@@ -326,17 +339,21 @@ class OpenRouterService {
     };
 
     const modelPricing = pricing[model] || pricing['openai/gpt-4'];
-    
+
+    if (!modelPricing) {
+      return 0;
+    }
+
     const promptCost = (promptTokens / 1000) * modelPricing.prompt;
     const completionCost = (completionTokens / 1000) * modelPricing.completion;
-    
+
     return promptCost + completionCost;
   }
 
   // Метод для проверки доступности сервиса
   public static async healthCheck(): Promise<boolean> {
     const instance = OpenRouterService.getInstance();
-    
+
     try {
       await instance.client.get('/models', { timeout: 5000 });
       return true;

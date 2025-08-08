@@ -7,45 +7,7 @@ class DatabaseService {
 
   private constructor() {
     this.prisma = new PrismaClient({
-      log: [
-        {
-          emit: 'event',
-          level: 'query',
-        },
-        {
-          emit: 'event',
-          level: 'error',
-        },
-        {
-          emit: 'event',
-          level: 'info',
-        },
-        {
-          emit: 'event',
-          level: 'warn',
-        },
-      ],
-    });
-
-    // Настройка логирования Prisma
-    this.prisma.$on('query', e => {
-      dbLogger.debug('Query executed', {
-        query: e.query,
-        params: e.params,
-        duration: e.duration,
-      });
-    });
-
-    this.prisma.$on('error', e => {
-      dbLogger.error('Database error', e);
-    });
-
-    this.prisma.$on('info', e => {
-      dbLogger.info('Database info', e);
-    });
-
-    this.prisma.$on('warn', e => {
-      dbLogger.warn('Database warning', e);
+      log: ['info', 'warn', 'error'],
     });
   }
 
@@ -291,8 +253,8 @@ class DatabaseService {
     const client = DatabaseService.getClient();
     return client.settings.upsert({
       where: { key },
-      update: { value, description },
-      create: { key, value, description },
+      update: { value, description: description || null },
+      create: { key, value, description: description || null },
     });
   }
 
