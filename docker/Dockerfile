@@ -20,11 +20,11 @@ RUN apk add --no-cache \
     libjpeg-turbo-dev \
     freetype-dev
 
-# Копирование package.json и package-lock.json
-COPY package*.json ./
+# Копирование package.json и yarn.lock
+COPY package.json yarn.lock ./
 
 # Установка зависимостей
-RUN npm ci
+RUN yarn install --frozen-lockfile
 
 # Копирование исходного кода
 COPY . .
@@ -37,7 +37,7 @@ RUN mkdir -p uploads
 
 EXPOSE 3000
 
-CMD ["npm", "run", "dev"]
+CMD ["yarn", "dev"]
 
 # Production build stage
 FROM node:18-alpine AS builder
@@ -59,20 +59,20 @@ RUN apk add --no-cache \
     libjpeg-turbo-dev \
     freetype-dev
 
-# Копирование package.json и package-lock.json
-COPY package*.json ./
+# Копирование package.json и yarn.lock
+COPY package.json yarn.lock ./
 
 # Установка всех зависимостей (включая dev)
-RUN npm ci
+RUN yarn install --frozen-lockfile
 
 # Копирование исходного кода
 COPY . .
 
 # Генерация Prisma клиента
-RUN npx prisma generate
+RUN yarn prisma generate
 
 # Сборка приложения
-RUN npm run build
+RUN yarn build
 
 # Production stage
 FROM node:18-alpine AS production
@@ -95,11 +95,11 @@ RUN apk add --no-cache \
 RUN addgroup -g 1001 -S nodejs
 RUN adduser -S nodejs -u 1001
 
-# Копирование package.json и package-lock.json
-COPY package*.json ./
+# Копирование package.json и yarn.lock
+COPY package.json yarn.lock ./
 
 # Установка только production зависимостей
-RUN npm ci --only=production && npm cache clean --force
+RUN if [ "$YARN_PRODUCTION" = "true" ]; then yarn install --frozen-lockfile --production; else yarn install --frozen-lockfile; fi && yarn cache clean
 
 # Копирование собранного приложения
 COPY --from=builder /app/dist ./dist
@@ -118,4 +118,4 @@ EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
     CMD node -e "require('http').get('http://localhost:3000/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) })"
 
-CMD ["npm", "start"]
+CMD ["yarn", "start"]

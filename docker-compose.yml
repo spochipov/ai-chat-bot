@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   postgres:
     image: postgres:15-alpine
@@ -9,7 +7,7 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: password
     ports:
-      - "5432:5432"
+      - "5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./docker/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
@@ -20,7 +18,7 @@ services:
     image: redis:7-alpine
     container_name: ai-chat-bot-redis
     ports:
-      - "6379:6379"
+      - "6380:6379"
     volumes:
       - redis_data:/data
     networks:
@@ -37,7 +35,7 @@ services:
       DATABASE_URL: postgresql://postgres:password@postgres:5432/ai_chat_bot
       REDIS_URL: redis://redis:6379
     ports:
-      - "3000:3000"
+      - "3211:3000"
     volumes:
       - .:/app
       - /app/node_modules
@@ -47,7 +45,7 @@ services:
       - redis
     networks:
       - ai-chat-bot-network
-    command: npm run dev
+    command: yarn dev
 
 volumes:
   postgres_data:

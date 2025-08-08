@@ -48,11 +48,18 @@ BOT_TOKEN=your_telegram_bot_token_here
 OPENROUTER_API_KEY=your_openrouter_api_key_here
 ADMIN_TELEGRAM_ID=your_telegram_user_id
 
+# Параметры базы данных для production
+POSTGRES_DB=ai_chat_bot
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=your_strong_password_here
+
 # Остальные параметры можно оставить по умолчанию
 OPENROUTER_MODEL=openai/gpt-4
-DATABASE_URL=postgresql://postgres:postgres@postgres:5432/ai_chat_bot
+DATABASE_URL=postgresql://postgres:your_strong_password_here@postgres:5432/ai_chat_bot
 REDIS_URL=redis://redis:6379
+REDIS_PASSWORD=your_redis_password_here
 NODE_ENV=production
+YARN_PRODUCTION=true
 ```
 
 **Как узнать свой Telegram ID:**
@@ -92,7 +99,7 @@ curl http://localhost:3000/health
 
 ```bash
 # Генерация ключа доступа для администратора
-docker-compose -f docker-compose.prod.yml exec app npm run generate-key $ADMIN_TELEGRAM_ID
+docker-compose -f docker-compose.prod.yml exec app yarn generate-key $ADMIN_TELEGRAM_ID
 ```
 
 Сохраните полученный ключ - он понадобится для первого входа в бота.
@@ -122,17 +129,17 @@ docker-compose -f docker-compose.prod.yml exec app npm run generate-key $ADMIN_T
 
 ```bash
 # Установка зависимостей
-npm install
+yarn install
 
 # Запуск только базы данных и Redis
 docker-compose up -d postgres redis
 
 # Настройка базы данных
-npx prisma migrate dev
-npx prisma db seed
+yarn prisma migrate dev
+yarn db:seed
 
 # Запуск в режиме разработки
-npm run dev
+yarn dev
 ```
 
 ## 📋 Полезные команды
@@ -156,7 +163,7 @@ docker-compose -f docker-compose.prod.yml up -d
 ### Управление пользователями
 ```bash
 # Генерация нового ключа доступа
-docker-compose -f docker-compose.prod.yml exec app npm run generate-key <admin_telegram_id>
+docker-compose -f docker-compose.prod.yml exec app yarn generate-key <admin_telegram_id>
 
 # Подключение к базе данных
 docker-compose -f docker-compose.prod.yml exec postgres psql -U postgres -d ai_chat_bot
@@ -207,6 +214,23 @@ crontab -e
 ```
 
 ## ❗ Решение проблем
+
+### Конфликт портов
+Если при запуске возникает ошибка "port is already allocated":
+
+```bash
+# Проверьте занятые порты
+sudo netstat -tulpn | grep :6379
+sudo netstat -tulpn | grep :5432
+
+# Остановите конфликтующие сервисы
+sudo systemctl stop redis
+sudo systemctl stop postgresql
+
+# Или используйте альтернативные порты в docker-compose.yml:
+# PostgreSQL: 5433:5432
+# Redis: 6380:6379
+```
 
 ### Бот не отвечает
 ```bash

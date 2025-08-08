@@ -46,7 +46,7 @@ cd ai-chat-bot
 ### 2. Установка зависимостей
 
 ```bash
-npm install
+yarn install
 ```
 
 ### 3. Настройка переменных окружения
@@ -120,7 +120,7 @@ npx prisma db seed
 ### 5. Запуск в режиме разработки
 
 ```bash
-npm run dev
+yarn dev
 ```
 
 ## 🐳 Docker деплой
@@ -156,10 +156,10 @@ chmod +x scripts/deploy.sh
 
 ```bash
 # Генерация нового ключа
-npm run generate-key <admin_telegram_id>
+yarn generate-key <admin_telegram_id>
 
 # Или через Docker
-docker-compose exec app npm run generate-key <admin_telegram_id>
+docker-compose exec app yarn generate-key <admin_telegram_id>
 ```
 
 ### Команды администратора
@@ -223,25 +223,25 @@ ai-chat-bot/
 
 ```bash
 # Разработка
-npm run dev              # Запуск в режиме разработки
-npm run build            # Сборка проекта
-npm run start            # Запуск production версии
+yarn dev                 # Запуск в режиме разработки
+yarn build               # Сборка проекта
+yarn start               # Запуск production версии
 
 # База данных
-npm run db:migrate       # Применение миграций
-npm run db:seed          # Заполнение данными
-npm run db:studio        # Prisma Studio
-npm run db:reset         # Сброс БД
+yarn db:migrate          # Применение миграций
+yarn db:seed             # Заполнение данными
+yarn db:studio           # Prisma Studio
+yarn db:reset            # Сброс БД
 
 # Утилиты
-npm run generate-key     # Генерация ключа доступа
-npm run lint             # Проверка кода
-npm run format           # Форматирование кода
+yarn generate-key        # Генерация ключа доступа
+yarn lint                # Проверка кода
+yarn format              # Форматирование кода
 
 # Docker
-npm run docker:build     # Сборка Docker образа
-npm run docker:up        # Запуск контейнеров
-npm run docker:down      # Остановка контейнеров
+yarn docker:build        # Сборка Docker образа
+yarn docker:run          # Запуск контейнеров
+yarn docker:stop         # Остановка контейнеров
 ```
 
 ### Добавление новых команд
