@@ -108,12 +108,23 @@ export const fileHandler = async (ctx: BotContext) => {
           },
           {
             role: 'user',
-            content: `${prompt}\n\nИзображение: ${imageUrl}`
+            content: [
+              {
+                type: 'text',
+                text: prompt
+              },
+              {
+                type: 'image_url',
+                image_url: {
+                  url: imageUrl
+                }
+              }
+            ]
           }
         ];
 
         const response = await OpenRouterService.sendMessage(messages, {
-          model: 'openai/gpt-4o'
+          model: process.env.OPENROUTER_MODEL || 'openai/gpt-4o'
         });
 
         await sendMessageWithFallback(ctx, response.content);
