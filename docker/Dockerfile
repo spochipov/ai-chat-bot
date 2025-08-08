@@ -18,7 +18,9 @@ RUN apk add --no-cache \
     pixman-dev \
     pangomm-dev \
     libjpeg-turbo-dev \
-    freetype-dev
+    freetype-dev \
+    openssl-dev \
+    openssl
 
 # Копирование package.json и yarn.lock
 COPY package.json yarn.lock ./
@@ -57,7 +59,9 @@ RUN apk add --no-cache \
     pixman-dev \
     pangomm-dev \
     libjpeg-turbo-dev \
-    freetype-dev
+    freetype-dev \
+    openssl-dev \
+    openssl
 
 # Копирование package.json и yarn.lock
 COPY package.json yarn.lock ./
@@ -89,7 +93,8 @@ RUN apk add --no-cache \
     pixman \
     pangomm \
     libjpeg-turbo \
-    freetype
+    freetype \
+    openssl
 
 # Создание пользователя для безопасности
 RUN addgroup -g 1001 -S nodejs
