@@ -1,0 +1,91 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id          String   @id @default(cuid())
+  telegramId  BigInt   @unique
+  username    String?
+  firstName   String?
+  lastName    String?
+  isAdmin     Boolean  @default(false)
+  isActive    Boolean  @default(true)
+  accessKeyId String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  accessKey AccessKey @relation(fields: [accessKeyId], references: [id])
+  messages  Message[]
+  usage     Usage[]
+  
+  @@map("users")
+}
+
+model AccessKey {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  isActive  Boolean  @default(true)
+  createdBy String   // ID админа, создавшего ключ
+  createdAt DateTime @default(now())
+  usedAt    DateTime?
+
+  users User[]
+  
+  @@map("access_keys")
+}
+
+model Message {
+  id          String      @id @default(cuid())
+  userId      String
+  content     String
+  role        MessageRole
+  tokens      Int?
+  cost        Float?
+  fileUrl     String?
+  fileName    String?
+  fileType    String?
+  messageId   Int?        // Telegram message ID
+  createdAt   DateTime    @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@map("messages")
+}
+
+enum MessageRole {
+  USER
+  ASSISTANT
+  SYSTEM
+}
+
+model Usage {
+  id          String   @id @default(cuid())
+  userId      String
+  tokens      Int
+  cost        Float
+  model       String
+  requestType String   // 'text', 'image', 'file'
+  date        DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@map("usage")
+}
+
+model Settings {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  value       String
+  description String?
+  updatedAt   DateTime @updatedAt
+  
+  @@map("settings")
+}
