@@ -45,19 +45,23 @@ async function main() {
       console.log(`✅ Setting created/updated: ${setting.key}`);
     }
 
-    // Создание первого ключа доступа для администратора (если указан ADMIN_TELEGRAM_ID)
+    // Создание первого администратора (если указан ADMIN_TELEGRAM_ID)
     const adminTelegramId = process.env['ADMIN_TELEGRAM_ID'];
     
     if (adminTelegramId) {
-      // Генерируем ключ доступа для админа
-      const adminKey = `ACK_${crypto.randomBytes(16).toString('hex').toUpperCase()}`;
+      const adminTelegramIdBigInt = BigInt(adminTelegramId);
       
-      const existingAdminKey = await prisma.accessKey.findFirst({
-        where: { createdBy: adminTelegramId },
+      // Проверяем, существует ли уже администратор
+      const existingAdmin = await prisma.user.findUnique({
+        where: { telegramId: adminTelegramIdBigInt },
       });
 
-      if (!existingAdminKey) {
-        await prisma.accessKey.create({
+      if (!existingAdmin) {
+        // Генерируем ключ доступа для админа
+        const adminKey = `ACK_${crypto.randomBytes(16).toString('hex').toUpperCase()}`;
+        
+        // Создаем ключ доступа
+        const accessKey = await prisma.accessKey.create({
           data: {
             key: adminKey,
             createdBy: adminTelegramId,
@@ -65,16 +69,41 @@ async function main() {
           },
         });
         
-        console.log('🔑 Admin access key created:');
-        console.log(`   Key: ${adminKey}`);
-        console.log(`   Admin ID: ${adminTelegramId}`);
-        console.log('   ⚠️  Save this key securely!');
+        // Создаем пользователя-администратора
+        await prisma.user.create({
+          data: {
+            telegramId: adminTelegramIdBigInt,
+            username: 'admin',
+            firstName: 'Administrator',
+            isAdmin: true,
+            isActive: true,
+            accessKeyId: accessKey.id,
+          },
+        });
+        
+        console.log('👑 Admin user created successfully:');
+        console.log(`   Telegram ID: ${adminTelegramId}`);
+        console.log(`   Access Key: ${adminKey}`);
+        console.log(`   Status: Administrator`);
+        console.log('   ✅ You can now use the bot as admin!');
       } else {
-        console.log('ℹ️  Admin access key already exists');
+        console.log('ℹ️  Admin user already exists');
+        console.log(`   Telegram ID: ${adminTelegramId}`);
+        console.log(`   Status: ${existingAdmin.isAdmin ? 'Administrator' : 'Regular User'}`);
+        
+        // Если пользователь существует, но не админ, делаем его админом
+        if (!existingAdmin.isAdmin) {
+          await prisma.user.update({
+            where: { id: existingAdmin.id },
+            data: { isAdmin: true },
+          });
+          console.log('   ✅ User promoted to administrator!');
+        }
       }
     } else {
-      console.log('⚠️  ADMIN_TELEGRAM_ID not set, skipping admin key creation');
-      console.log('   You can create an admin key later using: npm run generate-key <admin_id>');
+      console.log('⚠️  ADMIN_TELEGRAM_ID not set, skipping admin creation');
+      console.log('   Set ADMIN_TELEGRAM_ID environment variable and run: npm run seed');
+      console.log('   Or create an admin key using: npm run generate-key <admin_id>');
     }
 
     console.log('🎉 Database seeding completed successfully!');

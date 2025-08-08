@@ -1,6 +1,6 @@
 import { Telegraf, Context, session } from 'telegraf';
 import { botLogger } from '../utils/logger';
-import { authMiddleware } from './middleware/auth';
+import { loadUserMiddleware, authMiddleware, adminMiddleware } from './middleware/auth';
 import { rateLimitMiddleware } from './middleware/rateLimit';
 import { loggingMiddleware } from './middleware/logging';
 import { errorHandler } from './middleware/errorHandler';
@@ -59,27 +59,25 @@ bot.use(
 bot.use(loggingMiddleware);
 bot.use(errorHandler);
 bot.use(rateLimitMiddleware);
+bot.use(loadUserMiddleware); // Загружаем пользователя в контекст для всех запросов
 
 // Команды, доступные без аутентификации
 bot.start(startHandler);
 
-// Middleware для аутентификации (применяется ко всем командам кроме /start)
-bot.use(authMiddleware);
+// Основные команды (требуют авторизации)
+bot.help(authMiddleware, helpHandler);
+bot.command('clear', authMiddleware, clearHandler);
+bot.command('status', authMiddleware, statusHandler);
+bot.command('balance', authMiddleware, balanceHandler);
 
-// Основные команды
-bot.help(helpHandler);
-bot.command('clear', clearHandler);
-bot.command('status', statusHandler);
-
-// Админские команды
-bot.command('admin', adminHandler);
-bot.command('generate_key', generateKeyHandler);
-bot.command('list_keys', listKeysHandler);
-bot.command('deactivate_key', deactivateKeyHandler);
-bot.command('list_users', listUsersHandler);
-bot.command('user_stats', userStatsHandler);
-bot.command('balance', balanceHandler);
-bot.command('analytics', analyticsHandler);
+// Админские команды (требуют права администратора)
+bot.command('admin', adminMiddleware, adminHandler);
+bot.command('generate_key', adminMiddleware, generateKeyHandler);
+bot.command('list_keys', adminMiddleware, listKeysHandler);
+bot.command('deactivate_key', adminMiddleware, deactivateKeyHandler);
+bot.command('list_users', adminMiddleware, listUsersHandler);
+bot.command('user_stats', adminMiddleware, userStatsHandler);
+bot.command('analytics', adminMiddleware, analyticsHandler);
 
 // Обработка файлов
 bot.on(['document', 'photo'], fileHandler);
