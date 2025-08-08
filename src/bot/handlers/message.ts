@@ -1,6 +1,10 @@
 import { BotContext } from '../middleware/auth';
 import { handleAccessKeyInput } from './start';
 import { logger } from '../../utils/logger';
+import { DatabaseService } from '../../services/database';
+import { OpenRouterService, OpenRouterMessage } from '../../services/openrouter';
+import fs from 'fs';
+import path from 'path';
 
 export const messageHandler = async (ctx: BotContext) => {
   try {
@@ -32,12 +36,6 @@ export const messageHandler = async (ctx: BotContext) => {
       return;
     }
     
-    // Проверяем, активен ли пользователь
-    if (!ctx.user || !ctx.user.id) {
-      await ctx.reply('❌ Ошибка авторизации. Попробуйте перезапустить бота командой /start.');
-      return;
-    }
-    
     // Получаем текст сообщения
     const messageText = ctx.message && 'text' in ctx.message ? ctx.message.text : '';
     
@@ -45,17 +43,185 @@ export const messageHandler = async (ctx: BotContext) => {
       await ctx.reply('❌ Пожалуйста, отправьте текстовое сообщение.');
       return;
     }
-    
-    // TODO: Здесь будет обработка сообщения через AI
-    // Пока что просто отвечаем заглушкой
-    await ctx.reply(`Получено сообщение: "${messageText}"\n\n🚧 Обработка AI сообщений будет реализована позже.`);
-    
-    logger.info('Message received from user', {
-      userId: ctx.user.id,
-      telegramId: ctx.user.telegramId.toString(),
-      messageLength: messageText.length,
-      timestamp: new Date().toISOString()
-    });
+
+    // Отправляем индикатор "печатает"
+    await ctx.sendChatAction('typing');
+
+    try {
+      // Сохраняем сообщение пользователя в базу данных
+      const messageData: any = {
+        userId: ctx.user.id,
+        content: messageText,
+        role: 'USER',
+      };
+      
+      if (ctx.message?.message_id) {
+        messageData.messageId = ctx.message.message_id;
+      }
+      
+      await DatabaseService.createMessage(messageData);
+
+      // Получаем историю сообщений пользователя для контекста
+      const maxContextMessages = parseInt(
+        (await DatabaseService.getSetting('max_context_messages'))?.value || '20'
+      );
+      
+      const recentMessages = await DatabaseService.getUserMessages(
+        ctx.user.id,
+        maxContextMessages
+      );
+
+      // Формируем контекст для OpenRouter
+      const messages: OpenRouterMessage[] = [];
+      
+      // Добавляем системное сообщение
+      messages.push({
+        role: 'system',
+        content: `Ты полезный AI-ассистент. Отвечай на русском языке, если пользователь пишет на русском. Будь дружелюбным и информативным. Если нужно создать файл в ответе, укажи это в своем ответе.`
+      });
+
+      // Добавляем историю сообщений (в обратном порядке, так как они отсортированы по убыванию даты)
+      recentMessages.reverse().forEach(msg => {
+        messages.push({
+          role: msg.role.toLowerCase() as 'user' | 'assistant' | 'system',
+          content: msg.content
+        });
+      });
+
+      // Отправляем запрос в OpenRouter
+      const response = await OpenRouterService.sendMessage(messages);
+
+      // Проверяем, нужно ли создать файл
+      const shouldCreateFile = response.content.length > 4000 || 
+                              response.content.includes('```') ||
+                              response.content.toLowerCase().includes('создам файл') ||
+                              response.content.toLowerCase().includes('сохраню в файл');
+
+      let fileUrl: string | undefined;
+      let fileName: string | undefined;
+      let fileType: string | undefined;
+
+      if (shouldCreateFile) {
+        // Создаем файл с ответом
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+        fileName = `response_${timestamp}.txt`;
+        const filePath = path.join(process.cwd(), 'uploads', fileName);
+        
+        // Убеждаемся, что папка uploads существует
+        const uploadsDir = path.join(process.cwd(), 'uploads');
+        if (!fs.existsSync(uploadsDir)) {
+          fs.mkdirSync(uploadsDir, { recursive: true });
+        }
+
+        // Записываем файл
+        fs.writeFileSync(filePath, response.content, 'utf8');
+        
+        fileUrl = filePath;
+        fileType = 'text/plain';
+
+        // Отправляем файл пользователю
+        await ctx.replyWithDocument(
+          { source: filePath, filename: fileName },
+          {
+            caption: `📄 Ответ сохранен в файл из-за большого размера\n\n💬 Краткое содержание:\n${response.content.substring(0, 500)}${response.content.length > 500 ? '...' : ''}`,
+            parse_mode: 'Markdown'
+          }
+        );
+      } else {
+        // Отправляем обычный текстовый ответ
+        // Разбиваем длинные сообщения на части (лимит Telegram ~4096 символов)
+        const maxMessageLength = 4000;
+        if (response.content.length <= maxMessageLength) {
+          await ctx.reply(response.content, { parse_mode: 'Markdown' });
+        } else {
+          const chunks = splitMessage(response.content, maxMessageLength);
+          for (let i = 0; i < chunks.length; i++) {
+            const chunk = chunks[i];
+            const prefix = i === 0 ? '' : `📄 Часть ${i + 1}/${chunks.length}:\n\n`;
+            await ctx.reply(prefix + chunk, { parse_mode: 'Markdown' });
+            
+            // Небольшая задержка между сообщениями
+            if (i < chunks.length - 1) {
+              await new Promise(resolve => setTimeout(resolve, 500));
+            }
+          }
+        }
+      }
+
+      // Сохраняем ответ ассистента в базу данных
+      const assistantMessageData: any = {
+        userId: ctx.user.id,
+        content: response.content,
+        role: 'ASSISTANT',
+        tokens: response.usage.totalTokens,
+        cost: OpenRouterService.calculateCost(
+          response.usage.promptTokens,
+          response.usage.completionTokens,
+          response.model
+        ),
+      };
+      
+      if (fileUrl) {
+        assistantMessageData.fileUrl = fileUrl;
+      }
+      if (fileName) {
+        assistantMessageData.fileName = fileName;
+      }
+      if (fileType) {
+        assistantMessageData.fileType = fileType;
+      }
+      
+      await DatabaseService.createMessage(assistantMessageData);
+
+      // Сохраняем статистику использования
+      await DatabaseService.createUsage({
+        userId: ctx.user.id,
+        tokens: response.usage.totalTokens,
+        cost: OpenRouterService.calculateCost(
+          response.usage.promptTokens,
+          response.usage.completionTokens,
+          response.model
+        ),
+        model: response.model,
+        requestType: 'text',
+      });
+
+      logger.info('Message processed successfully', {
+        userId: ctx.user.id,
+        telegramId: ctx.user.telegramId.toString(),
+        messageLength: messageText.length,
+        responseLength: response.content.length,
+        tokens: response.usage.totalTokens,
+        model: response.model,
+        fileCreated: !!fileUrl,
+        timestamp: new Date().toISOString()
+      });
+
+    } catch (error) {
+      logger.error('Error processing message with OpenRouter', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+        userId: ctx.user.id,
+        telegramId: ctx.user.telegramId.toString(),
+        messageText: messageText.substring(0, 100)
+      });
+
+      // Отправляем пользователю информативное сообщение об ошибке
+      let errorMessage = '❌ Произошла ошибка при обработке вашего сообщения.';
+      
+      if (error instanceof Error) {
+        if (error.message.includes('Rate limit')) {
+          errorMessage = '⏱️ Превышен лимит запросов. Попробуйте через несколько минут.';
+        } else if (error.message.includes('Invalid OpenRouter API key')) {
+          errorMessage = '🔑 Ошибка конфигурации API. Обратитесь к администратору.';
+        } else if (error.message.includes('service is temporarily unavailable')) {
+          errorMessage = '🔧 Сервис временно недоступен. Попробуйте позже.';
+        } else if (error.message.includes('Bad request')) {
+          errorMessage = '📝 Некорректный запрос. Попробуйте переформулировать сообщение.';
+        }
+      }
+
+      await ctx.reply(errorMessage);
+    }
     
   } catch (error) {
     logger.error('Error in messageHandler', {
@@ -64,6 +230,61 @@ export const messageHandler = async (ctx: BotContext) => {
       telegramId: ctx.from?.id
     });
     
-    await ctx.reply('❌ Произошла ошибка при обработке сообщения. Попробуйте еще раз позже.');
+    await ctx.reply('❌ Произошла неожиданная ошибка. Попробуйте еще раз позже.');
   }
 };
+
+// Функция для разбивки длинных сообщений на части
+function splitMessage(text: string, maxLength: number): string[] {
+  if (text.length <= maxLength) {
+    return [text];
+  }
+
+  const chunks: string[] = [];
+  let currentChunk = '';
+  const lines = text.split('\n');
+
+  for (const line of lines) {
+    if (currentChunk.length + line.length + 1 <= maxLength) {
+      currentChunk += (currentChunk ? '\n' : '') + line;
+    } else {
+      if (currentChunk) {
+        chunks.push(currentChunk);
+        currentChunk = '';
+      }
+      
+      // Если строка сама по себе длиннее лимита, разбиваем ее
+      if (line.length > maxLength) {
+        const words = line.split(' ');
+        let currentLine = '';
+        
+        for (const word of words) {
+          if (currentLine.length + word.length + 1 <= maxLength) {
+            currentLine += (currentLine ? ' ' : '') + word;
+          } else {
+            if (currentLine) {
+              chunks.push(currentLine);
+              currentLine = word;
+            } else {
+              // Слово само по себе длиннее лимита
+              chunks.push(word.substring(0, maxLength));
+              currentLine = word.substring(maxLength);
+            }
+          }
+        }
+        
+        if (currentLine) {
+          currentChunk = currentLine;
+        }
+      } else {
+        currentChunk = line;
+      }
+    }
+  }
+
+  if (currentChunk) {
+    chunks.push(currentChunk);
+  }
+
+  return chunks;
+}
