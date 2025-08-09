@@ -12,6 +12,7 @@ import { clearHandler } from './handlers/clear';
 import { statusHandler } from './handlers/status';
 import { messageHandler } from './handlers/message';
 import { fileHandler } from './handlers/file';
+import { audioHandler } from './handlers/audio';
 
 // Импорт админских обработчиков
 import { adminHandler } from './handlers/admin';
@@ -87,6 +88,9 @@ bot.on('callback_query', callbackHandler);
 
 // Обработка файлов
 bot.on(['document', 'photo'], fileHandler);
+
+// Обработка аудиосообщений
+bot.on(['voice', 'audio'], audioHandler);
 
 // Обработка текстовых сообщений
 bot.on('text', messageHandler);

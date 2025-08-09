@@ -95,6 +95,13 @@ export const callbackHandler = async (ctx: BotContext) => {
       return;
     }
 
+    // Обрабатываем callback-запросы для баланса
+    if (callbackData.startsWith('balance_')) {
+      const { handleBalanceCallbacks } = await import('./balance');
+      await handleBalanceCallbacks(ctx, callbackData);
+      return;
+    }
+
     // Если callback-запрос не распознан
     await ctx.answerCbQuery('❌ Неизвестная команда');
     
