@@ -15,6 +15,7 @@ import { fileHandler } from './handlers/file';
 
 // Импорт админских обработчиков
 import { adminHandler } from './handlers/admin';
+import { callbackHandler } from './handlers/callback';
 import { generateKeyHandler } from './handlers/generateKey';
 import { listKeysHandler } from './handlers/listKeys';
 import { deactivateKeyHandler } from './handlers/deactivateKey';
@@ -64,8 +65,10 @@ bot.use(loadUserMiddleware); // Загружаем пользователя в �
 // Команды, доступные без аутентификации
 bot.start(startHandler);
 
+// Команда help доступна всем (показывает разный контент в зависимости от статуса)
+bot.help(helpHandler);
+
 // Основные команды (требуют авторизации)
-bot.help(authMiddleware, helpHandler);
 bot.command('clear', authMiddleware, clearHandler);
 bot.command('status', authMiddleware, statusHandler);
 bot.command('balance', authMiddleware, balanceHandler);
@@ -78,6 +81,9 @@ bot.command('deactivate_key', adminMiddleware, deactivateKeyHandler);
 bot.command('list_users', adminMiddleware, listUsersHandler);
 bot.command('user_stats', adminMiddleware, userStatsHandler);
 bot.command('analytics', adminMiddleware, analyticsHandler);
+
+// Обработка callback-запросов
+bot.on('callback_query', callbackHandler);
 
 // Обработка файлов
 bot.on(['document', 'photo'], fileHandler);

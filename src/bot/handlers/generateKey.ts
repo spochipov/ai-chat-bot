@@ -41,12 +41,6 @@ export const generateKeyHandler = async (ctx: BotContext) => {
           inline_keyboard: [
             [
               {
-                text: '📋 Скопировать ключ',
-                callback_data: `copy_key_${newAccessKey}`
-              }
-            ],
-            [
-              {
                 text: '📊 Список всех ключей',
                 callback_data: 'list_all_keys'
               }
