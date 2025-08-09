@@ -13,6 +13,7 @@ import { statusHandler } from './handlers/status';
 import { messageHandler } from './handlers/message';
 import { fileHandler } from './handlers/file';
 import { audioHandler } from './handlers/audio';
+import { forwardHandler } from './handlers/forward';
 
 // Импорт админских обработчиков
 import { adminHandler } from './handlers/admin';
@@ -91,6 +92,15 @@ bot.on(['document', 'photo'], fileHandler);
 
 // Обработка аудиосообщений
 bot.on(['voice', 'audio'], audioHandler);
+
+// Обработка пересылаемых сообщений (должна быть перед обработкой текста)
+bot.use(async (ctx, next) => {
+  if (ctx.message && (('forward_from' in ctx.message) || ('forward_from_chat' in ctx.message))) {
+    await forwardHandler(ctx as any);
+    return;
+  }
+  return next();
+});
 
 // Обработка текстовых сообщений
 bot.on('text', messageHandler);
