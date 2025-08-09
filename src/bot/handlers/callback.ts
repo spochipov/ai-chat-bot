@@ -205,6 +205,23 @@ export const callbackHandler = async (ctx: BotContext) => {
       return;
     }
 
+    // Обрабатываем callback-запросы для деактивации ключей и удаления пользователей
+    if (callbackData === 'refresh_deactivate_keys' || 
+        callbackData.startsWith('deactivate_key_') || 
+        callbackData.startsWith('delete_user_') || 
+        callbackData.startsWith('confirm_delete_user_')) {
+      const { handleDeactivateCallbacks } = await import('./deactivateKey');
+      await handleDeactivateCallbacks(ctx, callbackData);
+      return;
+    }
+
+    // Обрабатываем callback-запросы для списка пользователей
+    if (callbackData.startsWith('users_')) {
+      const { handleUsersCallbacks } = await import('./listUsers');
+      await handleUsersCallbacks(ctx, callbackData);
+      return;
+    }
+
     // Если callback-запрос не распознан
     await ctx.answerCbQuery('❌ Неизвестная команда');
     
