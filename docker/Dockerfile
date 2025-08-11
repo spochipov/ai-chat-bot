@@ -28,6 +28,9 @@ COPY package.json yarn.lock ./
 # Установка зависимостей
 RUN yarn install --frozen-lockfile
 
+# Установка прав доступа для исполняемых файлов
+RUN chmod +x node_modules/.bin/*
+
 # Копирование исходного кода
 COPY . .
 
@@ -68,6 +71,9 @@ COPY package.json yarn.lock ./
 
 # Установка всех зависимостей (включая dev)
 RUN yarn install --frozen-lockfile
+
+# Установка прав доступа для исполняемых файлов
+RUN chmod +x node_modules/.bin/*
 
 # Копирование исходного кода
 COPY . .
