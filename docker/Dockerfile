@@ -1,7 +1,7 @@
 # Multi-stage build для оптимизации размера образа
 
 # Development stage
-FROM node:18-alpine AS development
+FROM node:22-alpine AS development
 
 WORKDIR /app
 
@@ -50,7 +50,7 @@ EXPOSE 3000
 CMD ["yarn", "dev"]
 
 # Production build stage
-FROM node:18-alpine AS builder
+FROM node:22-alpine AS builder
 
 WORKDIR /app
 
@@ -98,7 +98,7 @@ RUN yarn add -D tsconfig-paths && yarn build
 RUN ls -la dist/
 
 # Production stage
-FROM node:18-alpine AS production
+FROM node:22-alpine AS production
 
 WORKDIR /app
 
