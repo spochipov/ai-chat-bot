@@ -220,7 +220,7 @@ describe('OpenRouterService', () => {
 
       const mockResponse = {
         data: {
-          choices: [],
+          choices: [] as any[],
           usage: {
             prompt_tokens: 5,
             completion_tokens: 0,
