@@ -1,0 +1,253 @@
+name: Staging Deployment
+
+on:
+  push:
+    branches: [ develop, staging ]
+  workflow_dispatch:
+    inputs:
+      force_deploy:
+        description: 'Force deployment even if tests fail'
+        required: false
+        default: 'false'
+        type: boolean
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+    
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_PASSWORD: test_password
+          POSTGRES_USER: test_user
+          POSTGRES_DB: test_db
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+      
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'yarn'
+
+    - name: Install dependencies
+      run: yarn install --frozen-lockfile
+
+    - name: Generate Prisma client
+      run: npx prisma generate
+      env:
+        DATABASE_URL: postgresql://test_user:test_password@localhost:5432/test_db
+
+    - name: Run database migrations
+      run: npx prisma migrate deploy
+      env:
+        DATABASE_URL: postgresql://test_user:test_password@localhost:5432/test_db
+
+    - name: Run linting
+      run: yarn lint
+
+    - name: Run tests
+      run: yarn test:coverage
+      env:
+        DATABASE_URL: postgresql://test_user:test_password@localhost:5432/test_db
+        REDIS_URL: redis://localhost:6379
+        BOT_TOKEN: test_token
+        OPENROUTER_API_KEY: test_key
+        JWT_SECRET: test_jwt_secret
+        ENCRYPTION_KEY: test_encryption_key
+        ADMIN_TELEGRAM_ID: 123456789
+
+  build:
+    name: Build Docker Image
+    runs-on: ubuntu-latest
+    needs: test
+    if: success() || github.event.inputs.force_deploy == 'true'
+    
+    outputs:
+      image: ${{ steps.image.outputs.image }}
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Log in to Container Registry
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ env.REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Extract metadata
+      id: meta
+      uses: docker/metadata-action@v5
+      with:
+        images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+        tags: |
+          type=ref,event=branch,suffix=-staging
+          type=sha,prefix=staging-
+
+    - name: Build and push Docker image
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        file: ./docker/Dockerfile
+        target: production
+        push: true
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+        platforms: linux/amd64
+
+    - name: Output image
+      id: image
+      run: |
+        echo "image=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:staging-${{ github.sha }}" >> $GITHUB_OUTPUT
+
+  deploy-staging:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    needs: [test, build]
+    if: success() || github.event.inputs.force_deploy == 'true'
+    environment: staging
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup SSH
+      uses: webfactory/ssh-agent@v0.8.0
+      with:
+        ssh-private-key: ${{ secrets.STAGING_SSH_PRIVATE_KEY }}
+
+    - name: Add staging server to known hosts
+      run: |
+        ssh-keyscan -H ${{ secrets.STAGING_SERVER_HOST }} >> ~/.ssh/known_hosts
+
+    - name: Create deployment directory
+      run: |
+        ssh ${{ secrets.STAGING_SERVER_USER }}@${{ secrets.STAGING_SERVER_HOST }} "
+          mkdir -p /opt/ai-chat-bot-staging
+        "
+
+    - name: Copy deployment files
+      run: |
+        scp docker-compose.prod.yml ${{ secrets.STAGING_SERVER_USER }}@${{ secrets.STAGING_SERVER_HOST }}:/opt/ai-chat-bot-staging/
+        scp scripts/deploy.sh ${{ secrets.STAGING_SERVER_USER }}@${{ secrets.STAGING_SERVER_HOST }}:/opt/ai-chat-bot-staging/
+        scp docker/nginx.conf ${{ secrets.STAGING_SERVER_USER }}@${{ secrets.STAGING_SERVER_HOST }}:/opt/ai-chat-bot-staging/nginx.conf
+
+    - name: Create .env file on staging server
+      run: |
+        ssh ${{ secrets.STAGING_SERVER_USER }}@${{ secrets.STAGING_SERVER_HOST }} "
+          cat > /opt/ai-chat-bot-staging/.env << 'EOF'
+        NODE_ENV=staging
+        BOT_TOKEN=${{ secrets.STAGING_BOT_TOKEN }}
+        ADMIN_TELEGRAM_ID=${{ secrets.STAGING_ADMIN_TELEGRAM_ID }}
+        OPENROUTER_API_KEY=${{ secrets.STAGING_OPENROUTER_API_KEY }}
+        OPENROUTER_MODEL=${{ secrets.STAGING_OPENROUTER_MODEL }}
+        JWT_SECRET=${{ secrets.STAGING_JWT_SECRET }}
+        ENCRYPTION_KEY=${{ secrets.STAGING_ENCRYPTION_KEY }}
+        POSTGRES_DB=${{ secrets.STAGING_POSTGRES_DB }}
+        POSTGRES_USER=${{ secrets.STAGING_POSTGRES_USER }}
+        POSTGRES_PASSWORD=${{ secrets.STAGING_POSTGRES_PASSWORD }}
+        REDIS_PASSWORD=${{ secrets.STAGING_REDIS_PASSWORD }}
+        LOG_LEVEL=debug
+        MAX_FILE_SIZE=${{ secrets.MAX_FILE_SIZE }}
+        ALLOWED_FILE_TYPES=${{ secrets.ALLOWED_FILE_TYPES }}
+        DOCKER_IMAGE=${{ needs.build.outputs.image }}
+        EOF
+        "
+
+    - name: Login to Container Registry on staging server
+      run: |
+        ssh ${{ secrets.STAGING_SERVER_USER }}@${{ secrets.STAGING_SERVER_HOST }} "
+          echo ${{ secrets.GITHUB_TOKEN }} | docker login ${{ env.REGISTRY }} -u ${{ github.actor }} --password-stdin
+        "
+
+    - name: Pull latest image
+      run: |
+        ssh ${{ secrets.STAGING_SERVER_USER }}@${{ secrets.STAGING_SERVER_HOST }} "
+          cd /opt/ai-chat-bot-staging
+          docker pull ${{ needs.build.outputs.image }}
+        "
+
+    - name: Update docker-compose with new image
+      run: |
+        ssh ${{ secrets.STAGING_SERVER_USER }}@${{ secrets.STAGING_SERVER_HOST }} "
+          cd /opt/ai-chat-bot-staging
+          sed -i 's|build:|# build:|g' docker-compose.prod.yml
+          sed -i 's|context: .|# context: .|g' docker-compose.prod.yml
+          sed -i 's|dockerfile: docker/Dockerfile|# dockerfile: docker/Dockerfile|g' docker-compose.prod.yml
+          sed -i 's|target: production|# target: production|g' docker-compose.prod.yml
+          sed -i '/# build:/a\    image: ${{ needs.build.outputs.image }}' docker-compose.prod.yml
+          # Change ports for staging
+          sed -i 's|80:80|8080:80|g' docker-compose.prod.yml
+          sed -i 's|443:443|8443:443|g' docker-compose.prod.yml
+        "
+
+    - name: Deploy to staging
+      run: |
+        ssh ${{ secrets.STAGING_SERVER_USER }}@${{ secrets.STAGING_SERVER_HOST }} "
+          cd /opt/ai-chat-bot-staging
+          chmod +x deploy.sh
+          ./deploy.sh staging
+        "
+
+    - name: Run staging tests
+      run: |
+        ssh ${{ secrets.STAGING_SERVER_USER }}@${{ secrets.STAGING_SERVER_HOST }} "
+          cd /opt/ai-chat-bot-staging
+          # Wait for application to be ready
+          timeout 120 bash -c 'until curl -f http://localhost:8080/health; do sleep 5; done'
+          
+          # Run basic health checks
+          curl -f http://localhost:8080/health || exit 1
+          
+          # Check if bot is responding (if health endpoint includes bot status)
+          echo 'Staging deployment successful!'
+        "
+
+    - name: Send staging notification
+      if: always()
+      uses: 8398a7/action-slack@v3
+      with:
+        status: ${{ job.status }}
+        channel: '#staging'
+        text: |
+          🧪 Staging deployment ${{ job.status }}!
+          Repository: ${{ github.repository }}
+          Branch: ${{ github.ref_name }}
+          Commit: ${{ github.sha }}
+          Author: ${{ github.actor }}
+          Staging URL: http://${{ secrets.STAGING_SERVER_HOST }}:8080
+      env:
+        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+      if: env.SLACK_WEBHOOK_URL != ''
