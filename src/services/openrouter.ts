@@ -97,6 +97,7 @@ class OpenRouterService {
         apiLogger.debug('OpenRouter request', {
           method: config.method,
           url: config.url,
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
           data: config.data,
         });
         return config;
@@ -113,6 +114,7 @@ class OpenRouterService {
       (response: AxiosResponse) => {
         apiLogger.debug('OpenRouter response', {
           status: response.status,
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
           data: response.data,
         });
         return response;

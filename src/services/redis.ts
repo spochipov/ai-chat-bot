@@ -122,6 +122,7 @@ class RedisService {
     const client = RedisService.getClient();
     const key = `chat_context:${userId}`;
     const data = await client.get(key);
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-return
     return data ? JSON.parse(data) : null;
   }
 
@@ -147,7 +148,7 @@ class RedisService {
     const currentCount = await client.zcard(key);
 
     if (currentCount >= limit) {
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access
       const oldestRequest: any = await client.zrange(key, 0, 0, 'WITHSCORES');
       const resetTime =
         // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
