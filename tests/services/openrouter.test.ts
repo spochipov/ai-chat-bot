@@ -25,10 +25,15 @@ describe('OpenRouterService', () => {
     process.env.OPENROUTER_API_KEY = 'test-api-key';
     process.env.OPENROUTER_BASE_URL = 'https://openrouter.ai/api/v1';
     process.env.OPENROUTER_MODEL = 'openai/gpt-4';
+    
+    // Очищаем синглтон
+    (OpenRouterService as any).instance = undefined;
   });
 
   afterEach(() => {
     jest.clearAllMocks();
+    // Очищаем синглтон после каждого теста
+    (OpenRouterService as any).instance = undefined;
   });
 
   describe('sendMessage', () => {

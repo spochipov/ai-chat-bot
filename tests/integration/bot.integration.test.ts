@@ -26,7 +26,6 @@ describe('Bot Integration Tests', () => {
       reply: jest.fn(),
       session: {
         awaitingAccessKey: false,
-        user: undefined,
       },
       awaitingAccessKey: false,
       user: undefined,
@@ -300,7 +299,7 @@ describe('Bot Integration Tests', () => {
       const userIds = ['user-1', 'user-2', 'user-3'];
       const mockUsers = userIds.map(id => ({
         id,
-        telegramId: BigInt(parseInt(id.split('-')[1]) + 123456789),
+        telegramId: BigInt(parseInt(id.split('-')[1]!) + 123456789),
         isActive: true,
       }));
 
@@ -335,18 +334,18 @@ describe('Bot Integration Tests', () => {
       }));
 
       mockedOpenRouterService.sendMessage
-        .mockResolvedValueOnce(mockResponses[0])
-        .mockResolvedValueOnce(mockResponses[1])
-        .mockResolvedValueOnce(mockResponses[2]);
+        .mockResolvedValueOnce(mockResponses[0]!)
+        .mockResolvedValueOnce(mockResponses[1]!)
+        .mockResolvedValueOnce(mockResponses[2]!);
 
       // Выполняем параллельные запросы
       const promises = messages.map(msg => OpenRouterService.sendMessage(msg));
       const results = await Promise.all(promises);
 
       expect(results).toHaveLength(3);
-      expect(results[0].content).toBe('Response 1');
-      expect(results[1].content).toBe('Response 2');
-      expect(results[2].content).toBe('Response 3');
+      expect(results[0]?.content).toBe('Response 1');
+      expect(results[1]?.content).toBe('Response 2');
+      expect(results[2]?.content).toBe('Response 3');
     });
   });
 });

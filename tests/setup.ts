@@ -31,6 +31,18 @@ jest.mock('../src/utils/logger', () => ({
     warn: jest.fn(),
     debug: jest.fn(),
   },
+  botLogger: {
+    info: jest.fn(),
+    error: jest.fn(),
+    warn: jest.fn(),
+    debug: jest.fn(),
+  },
+  redisLogger: {
+    info: jest.fn(),
+    error: jest.fn(),
+    warn: jest.fn(),
+    debug: jest.fn(),
+  },
 }));
 
 // Мок для Prisma Client

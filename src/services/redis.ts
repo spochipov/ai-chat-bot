@@ -148,7 +148,7 @@ class RedisService {
     const currentCount = await client.zcard(key);
 
     if (currentCount >= limit) {
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const oldestRequest: any = await client.zrange(key, 0, 0, 'WITHSCORES');
       const resetTime =
         // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access

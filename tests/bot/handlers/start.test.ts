@@ -22,7 +22,6 @@ describe('Start Handler', () => {
       reply: jest.fn(),
       session: {
         awaitingAccessKey: false,
-        user: undefined,
       },
       awaitingAccessKey: false,
       user: undefined,
@@ -174,13 +173,12 @@ describe('Start Handler', () => {
     beforeEach(() => {
       mockCtx.session = {
         awaitingAccessKey: true,
-        user: undefined,
       };
       mockCtx.awaitingAccessKey = true;
     });
 
     it('должен успешно зарегистрировать пользователя с валидным ключом', async () => {
-      const accessKey = 'ACK_test_key_123456789012345678901234';
+      const accessKey = 'ACK_test_key_12345678901234567890123';
       const foundKey = {
         id: 'key-123',
         key: accessKey,
@@ -254,7 +252,7 @@ describe('Start Handler', () => {
     });
 
     it('должен отклонить деактивированный ключ', async () => {
-      const accessKey = 'ACK_inactive_key_123456789012345678';
+      const accessKey = 'ACK_inactive_key_1234567890123456789';
       const inactiveKey = {
         id: 'key-123',
         key: accessKey,
@@ -272,7 +270,7 @@ describe('Start Handler', () => {
     });
 
     it('должен отклонить уже используемый ключ', async () => {
-      const accessKey = 'ACK_used_key_1234567890123456789012';
+      const accessKey = 'ACK_used_key_12345678901234567890123';
       const usedKey = {
         id: 'key-123',
         key: accessKey,
@@ -300,7 +298,7 @@ describe('Start Handler', () => {
     });
 
     it('должен обработать ошибку при создании пользователя', async () => {
-      const accessKey = 'ACK_test_key_123456789012345678901234';
+      const accessKey = 'ACK_test_key_12345678901234567890123';
       const foundKey = {
         id: 'key-123',
         key: accessKey,
@@ -324,7 +322,7 @@ describe('Start Handler', () => {
     });
 
     it('должен создать пользователя без опциональных полей', async () => {
-      const accessKey = 'ACK_test_key_123456789012345678901234';
+      const accessKey = 'ACK_test_key_12345678901234567890123';
       const foundKey = {
         id: 'key-123',
         key: accessKey,

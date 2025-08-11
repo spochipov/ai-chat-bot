@@ -1,58 +1,56 @@
-import { DatabaseService } from '../../src/services/database';
-import { PrismaClient } from '@prisma/client';
+// Мокаем PrismaClient перед импортом DatabaseService
+const mockPrismaClient = {
+  $connect: jest.fn(),
+  $disconnect: jest.fn(),
+  user: {
+    create: jest.fn(),
+    findUnique: jest.fn(),
+    findFirst: jest.fn(),
+    findMany: jest.fn(),
+    update: jest.fn(),
+    delete: jest.fn(),
+    count: jest.fn(),
+  },
+  accessKey: {
+    create: jest.fn(),
+    findUnique: jest.fn(),
+    findMany: jest.fn(),
+    update: jest.fn(),
+    delete: jest.fn(),
+  },
+  message: {
+    create: jest.fn(),
+    findMany: jest.fn(),
+    deleteMany: jest.fn(),
+  },
+  usage: {
+    create: jest.fn(),
+    findMany: jest.fn(),
+    aggregate: jest.fn(),
+  },
+  settings: {
+    findUnique: jest.fn(),
+    upsert: jest.fn(),
+  },
+};
 
-// Мокаем PrismaClient
 jest.mock('@prisma/client', () => ({
-  PrismaClient: jest.fn().mockImplementation(() => ({
-    $connect: jest.fn(),
-    $disconnect: jest.fn(),
-    user: {
-      create: jest.fn(),
-      findUnique: jest.fn(),
-      findFirst: jest.fn(),
-      findMany: jest.fn(),
-      update: jest.fn(),
-      delete: jest.fn(),
-      count: jest.fn(),
-    },
-    accessKey: {
-      create: jest.fn(),
-      findUnique: jest.fn(),
-      findMany: jest.fn(),
-      update: jest.fn(),
-      delete: jest.fn(),
-    },
-    message: {
-      create: jest.fn(),
-      findMany: jest.fn(),
-      deleteMany: jest.fn(),
-    },
-    usage: {
-      create: jest.fn(),
-      findMany: jest.fn(),
-      aggregate: jest.fn(),
-    },
-    settings: {
-      findUnique: jest.fn(),
-      upsert: jest.fn(),
-    },
-  })),
+  PrismaClient: jest.fn().mockImplementation(() => mockPrismaClient),
 }));
 
+import { DatabaseService } from '../../src/services/database';
+
 describe('DatabaseService', () => {
-  let mockPrismaClient: any;
-
   beforeEach(() => {
-    // Получаем мок PrismaClient
-    mockPrismaClient = new (PrismaClient as jest.MockedClass<typeof PrismaClient>)();
-  });
-
-  afterEach(() => {
     jest.clearAllMocks();
   });
 
   describe('initialize', () => {
     it('должен успешно подключиться к базе данных', async () => {
+      // Мокаем getInstance для возврата объекта с нашим мок-клиентом
+      const mockInstance = { prisma: mockPrismaClient };
+      jest.spyOn(DatabaseService, 'getInstance').mockReturnValue(mockInstance as any);
+      
       mockPrismaClient.$connect.mockResolvedValue(undefined);
 
       await expect(DatabaseService.initialize()).resolves.not.toThrow();
@@ -60,6 +58,9 @@ describe('DatabaseService', () => {
     });
 
     it('должен выбросить ошибку при неудачном подключении', async () => {
+      const mockInstance = { prisma: mockPrismaClient };
+      jest.spyOn(DatabaseService, 'getInstance').mockReturnValue(mockInstance as any);
+      
       const error = new Error('Connection failed');
       mockPrismaClient.$connect.mockRejectedValue(error);
 
@@ -70,6 +71,9 @@ describe('DatabaseService', () => {
 
   describe('disconnect', () => {
     it('должен успешно отключиться от базы данных', async () => {
+      const mockInstance = { prisma: mockPrismaClient };
+      jest.spyOn(DatabaseService, 'getInstance').mockReturnValue(mockInstance as any);
+      
       mockPrismaClient.$disconnect.mockResolvedValue(undefined);
 
       await expect(DatabaseService.disconnect()).resolves.not.toThrow();
@@ -77,6 +81,9 @@ describe('DatabaseService', () => {
     });
 
     it('должен выбросить ошибку при неудачном отключении', async () => {
+      const mockInstance = { prisma: mockPrismaClient };
+      jest.spyOn(DatabaseService, 'getInstance').mockReturnValue(mockInstance as any);
+      
       const error = new Error('Disconnect failed');
       mockPrismaClient.$disconnect.mockRejectedValue(error);
 
