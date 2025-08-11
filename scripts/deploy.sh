@@ -52,6 +52,14 @@ if ! command -v docker-compose &> /dev/null; then
     error "Docker Compose is not installed"
 fi
 
+# Проверка curl для health checks
+if ! command -v curl &> /dev/null; then
+    warn "curl is not installed, health checks will be skipped"
+    SKIP_HEALTH_CHECKS=true
+else
+    SKIP_HEALTH_CHECKS=false
+fi
+
 # Загрузка переменных окружения
 source .env
 
@@ -123,13 +131,28 @@ docker-compose -f docker-compose.prod.yml up -d app
 log "Waiting for application to be ready..."
 timeout=120
 counter=0
-while ! curl -f http://localhost:3000/health &> /dev/null; do
-    sleep 5
-    counter=$((counter + 5))
+if [[ "$SKIP_HEALTH_CHECKS" == "false" ]]; then
+    while ! curl -f http://localhost:3000/health &> /dev/null; do
+        sleep 5
+        counter=$((counter + 5))
+        if [[ $counter -ge $timeout ]]; then
+            error "Application failed to start within $timeout seconds"
+        fi
+    done
+else
+    # Если curl недоступен, просто ждем и проверяем статус контейнера
+    while [[ $counter -lt $timeout ]]; do
+        if docker-compose -f docker-compose.prod.yml ps app | grep -q "Up"; then
+            log "Application container is running"
+            break
+        fi
+        sleep 5
+        counter=$((counter + 5))
+    done
     if [[ $counter -ge $timeout ]]; then
         error "Application failed to start within $timeout seconds"
     fi
-done
+fi
 
 # Запуск Nginx (если используется)
 if docker-compose -f docker-compose.prod.yml config --services | grep -q nginx; then
@@ -153,10 +176,14 @@ fi
 log "Running final health checks..."
 
 # Проверка health endpoint
-if curl -f http://localhost:3000/health &> /dev/null; then
-    log "✅ Health check passed"
+if [[ "$SKIP_HEALTH_CHECKS" == "false" ]]; then
+    if curl -f http://localhost:3000/health &> /dev/null; then
+        log "✅ Health check passed"
+    else
+        error "❌ Health check failed"
+    fi
 else
-    error "❌ Health check failed"
+    log "⚠️ Health check skipped (curl not available)"
 fi
 
 # Проверка подключения к базе данных
@@ -167,10 +194,18 @@ else
 fi
 
 # Проверка Redis
-if docker-compose -f docker-compose.prod.yml exec -T redis redis-cli ping | grep -q PONG; then
-    log "✅ Redis connection successful"
+if [[ -n "$REDIS_PASSWORD" ]]; then
+    if docker-compose -f docker-compose.prod.yml exec -T redis redis-cli -a "$REDIS_PASSWORD" ping | grep -q PONG; then
+        log "✅ Redis connection successful"
+    else
+        error "❌ Redis connection failed"
+    fi
 else
-    error "❌ Redis connection failed"
+    if docker-compose -f docker-compose.prod.yml exec -T redis redis-cli ping | grep -q PONG; then
+        log "✅ Redis connection successful"
+    else
+        error "❌ Redis connection failed"
+    fi
 fi
 
 # Очистка неиспользуемых ресурсов

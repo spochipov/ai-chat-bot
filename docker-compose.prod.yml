@@ -39,9 +39,9 @@ services:
       test: >
         sh -c "
         if [ -n \"$$REDIS_PASSWORD\" ]; then
-          redis-cli -a \"$$REDIS_PASSWORD\" ping
+          redis-cli -a \"$$REDIS_PASSWORD\" ping | grep PONG
         else
-          redis-cli ping
+          redis-cli ping | grep PONG
         fi
         "
       interval: 30s

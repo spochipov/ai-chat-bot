@@ -33,7 +33,8 @@ COPY src ./src
 COPY prisma ./prisma
 COPY scripts ./scripts
 COPY tsconfig.json ./
-COPY .eslintrc.js ./
+COPY eslint.config.js ./
+COPY jest.config.js ./
 COPY .prettierrc ./
 
 # Переустановка Prisma для исправления поврежденных файлов
@@ -82,7 +83,8 @@ COPY src ./src
 COPY prisma ./prisma
 COPY scripts ./scripts
 COPY tsconfig.json ./
-COPY .eslintrc.js ./
+COPY eslint.config.js ./
+COPY jest.config.js ./
 COPY .prettierrc ./
 
 # Переустановка Prisma для исправления поврежденных файлов
