@@ -182,7 +182,5 @@ ecosystem.config.js
 # Prettier
 .prettierignore
 
-# Jest
-jest.config.js
 
 backups
