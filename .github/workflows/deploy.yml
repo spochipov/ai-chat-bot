@@ -138,7 +138,7 @@ jobs:
     - name: Output image
       id: image
       run: |
-        echo "image=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}" >> $GITHUB_OUTPUT
+        echo "image=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest" >> $GITHUB_OUTPUT
 
   deploy:
     name: Deploy to Server
