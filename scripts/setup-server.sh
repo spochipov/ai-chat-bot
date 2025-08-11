@@ -67,19 +67,19 @@ fi
 
 # Обновление системы
 log "Updating system packages..."
-run_remote "sudo apt update && sudo apt upgrade -y"
+run_remote "apt update && apt upgrade -y"
 
 # Установка необходимых пакетов
 log "Installing required packages..."
-run_remote "sudo apt install -y curl wget git unzip htop nano vim ufw fail2ban"
+run_remote "apt install -y curl wget git unzip htop nano vim ufw fail2ban"
 
 # Установка Docker
 log "Installing Docker..."
 run_remote "
     if ! command -v docker &> /dev/null; then
         curl -fsSL https://get.docker.com -o get-docker.sh
-        sudo sh get-docker.sh
-        sudo usermod -aG docker \$USER
+        sh get-docker.sh
+        usermod -aG docker \$USER
         rm get-docker.sh
         echo 'Docker installed successfully'
     else
@@ -91,8 +91,8 @@ run_remote "
 log "Installing Docker Compose..."
 run_remote "
     if ! command -v docker-compose &> /dev/null; then
-        sudo curl -L \"https://github.com/docker/compose/releases/latest/download/docker-compose-\$(uname -s)-\$(uname -m)\" -o /usr/local/bin/docker-compose
-        sudo chmod +x /usr/local/bin/docker-compose
+        curl -L \"https://github.com/docker/compose/releases/latest/download/docker-compose-\$(uname -s)-\$(uname -m)\" -o /usr/local/bin/docker-compose
+        chmod +x /usr/local/bin/docker-compose
         echo 'Docker Compose installed successfully'
     else
         echo 'Docker Compose is already installed'
@@ -103,13 +103,13 @@ run_remote "
 log "Creating deploy user..."
 run_remote "
     if ! id deploy &>/dev/null; then
-        sudo useradd -m -s /bin/bash deploy
-        sudo usermod -aG docker deploy
-        sudo mkdir -p /home/deploy/.ssh
-        sudo touch /home/deploy/.ssh/authorized_keys
-        sudo chown -R deploy:deploy /home/deploy/.ssh
-        sudo chmod 700 /home/deploy/.ssh
-        sudo chmod 600 /home/deploy/.ssh/authorized_keys
+        useradd -m -s /bin/bash deploy
+        usermod -aG docker deploy
+        mkdir -p /home/deploy/.ssh
+        touch /home/deploy/.ssh/authorized_keys
+        chown -R deploy:deploy /home/deploy/.ssh
+        chmod 700 /home/deploy/.ssh
+        chmod 600 /home/deploy/.ssh/authorized_keys
         echo 'Deploy user created successfully'
     else
         echo 'Deploy user already exists'
@@ -129,39 +129,39 @@ fi
 log "Setting up SSH keys for deploy user..."
 PUBLIC_KEY=$(cat ~/.ssh/ai-chat-bot-deploy.pub)
 run_remote "
-    echo '$PUBLIC_KEY' | sudo tee -a /home/deploy/.ssh/authorized_keys
-    sudo chown deploy:deploy /home/deploy/.ssh/authorized_keys
-    sudo chmod 600 /home/deploy/.ssh/authorized_keys
+    echo '$PUBLIC_KEY' | tee -a /home/deploy/.ssh/authorized_keys
+    chown deploy:deploy /home/deploy/.ssh/authorized_keys
+    chmod 600 /home/deploy/.ssh/authorized_keys
 "
 
 # Создание директорий для приложения
 log "Creating application directories..."
 run_remote "
-    sudo mkdir -p /opt/ai-chat-bot
-    sudo mkdir -p /opt/ai-chat-bot-staging
-    sudo chown -R deploy:deploy /opt/ai-chat-bot
-    sudo chown -R deploy:deploy /opt/ai-chat-bot-staging
+    mkdir -p /opt/ai-chat-bot
+    mkdir -p /opt/ai-chat-bot-staging
+    chown -R deploy:deploy /opt/ai-chat-bot
+    chown -R deploy:deploy /opt/ai-chat-bot-staging
 "
 
 # Настройка firewall
 log "Configuring firewall..."
 run_remote "
-    sudo ufw --force reset
-    sudo ufw default deny incoming
-    sudo ufw default allow outgoing
-    sudo ufw allow ssh
-    sudo ufw allow 80/tcp
-    sudo ufw allow 443/tcp
-    sudo ufw allow 8080/tcp  # для staging
-    sudo ufw allow 8443/tcp  # для staging HTTPS
-    sudo ufw --force enable
+    ufw --force reset
+    ufw default deny incoming
+    ufw default allow outgoing
+    ufw allow ssh
+    ufw allow 80/tcp
+    ufw allow 443/tcp
+    ufw allow 8080/tcp  # для staging
+    ufw allow 8443/tcp  # для staging HTTPS
+    ufw --force enable
 "
 
 # Настройка fail2ban
 log "Configuring fail2ban..."
 run_remote "
-    sudo systemctl enable fail2ban
-    sudo systemctl start fail2ban
+    systemctl enable fail2ban
+    systemctl start fail2ban
 "
 
 # Установка Nginx (опционально)
@@ -170,12 +170,12 @@ echo
 if [[ $REPLY =~ ^[Yy]$ ]]; then
     log "Installing Nginx..."
     run_remote "
-        sudo apt install -y nginx
-        sudo systemctl enable nginx
-        sudo systemctl start nginx
+        apt install -y nginx
+        systemctl enable nginx
+        systemctl start nginx
         
         # Создание базовой конфигурации
-        sudo tee /etc/nginx/sites-available/ai-chat-bot > /dev/null <<EOF
+        tee /etc/nginx/sites-available/ai-chat-bot > /dev/null <<EOF
 server {
     listen 80;
     server_name _;
@@ -216,16 +216,16 @@ server {
 }
 EOF
         
-        sudo ln -sf /etc/nginx/sites-available/ai-chat-bot /etc/nginx/sites-enabled/
-        sudo rm -f /etc/nginx/sites-enabled/default
-        sudo nginx -t && sudo systemctl reload nginx
+        ln -sf /etc/nginx/sites-available/ai-chat-bot /etc/nginx/sites-enabled/
+        rm -f /etc/nginx/sites-enabled/default
+        nginx -t && systemctl reload nginx
     "
 fi
 
 # Настройка логротации
 log "Setting up log rotation..."
 run_remote "
-    sudo tee /etc/logrotate.d/ai-chat-bot > /dev/null <<EOF
+    tee /etc/logrotate.d/ai-chat-bot > /dev/null <<EOF
 /opt/ai-chat-bot/logs/*.log {
     daily
     missingok
@@ -257,7 +257,7 @@ EOF
 # Настройка мониторинга дискового пространства
 log "Setting up disk space monitoring..."
 run_remote "
-    sudo tee /usr/local/bin/check-disk-space.sh > /dev/null <<'EOF'
+    tee /usr/local/bin/check-disk-space.sh > /dev/null <<'EOF'
 #!/bin/bash
 THRESHOLD=85
 USAGE=\$(df / | awk 'NR==2 {print \$5}' | sed 's/%//')
@@ -269,16 +269,16 @@ if [ \$USAGE -gt \$THRESHOLD ]; then
 fi
 EOF
     
-    sudo chmod +x /usr/local/bin/check-disk-space.sh
+    chmod +x /usr/local/bin/check-disk-space.sh
     
     # Добавление в crontab
-    (sudo crontab -l 2>/dev/null; echo '0 */6 * * * /usr/local/bin/check-disk-space.sh') | sudo crontab -
+    (crontab -l 2>/dev/null; echo '0 */6 * * * /usr/local/bin/check-disk-space.sh') | crontab -
 "
 
 # Создание скрипта для мониторинга
 log "Creating monitoring script..."
 run_remote "
-    sudo tee /usr/local/bin/ai-chat-bot-status.sh > /dev/null <<'EOF'
+    tee /usr/local/bin/ai-chat-bot-status.sh > /dev/null <<'EOF'
 #!/bin/bash
 
 echo '=== AI Chat Bot Status ==='
@@ -304,7 +304,7 @@ echo \"Containers: \$(docker ps -a | wc -l) total, \$(docker ps | wc -l) running
 echo \"Volumes: \$(docker volume ls | wc -l) total\"
 EOF
     
-    sudo chmod +x /usr/local/bin/ai-chat-bot-status.sh
+    chmod +x /usr/local/bin/ai-chat-bot-status.sh
 "
 
 # Проверка установки
@@ -314,7 +314,7 @@ run_remote "
     echo \"Docker version: \$(docker --version)\"
     echo \"Docker Compose version: \$(docker-compose --version)\"
     echo \"Deploy user: \$(id deploy)\"
-    echo \"Firewall status: \$(sudo ufw status | head -1)\"
+    echo \"Firewall status: \$(ufw status | head -1)\"
     echo \"Nginx status: \$(systemctl is-active nginx 2>/dev/null || echo 'not installed')\"
     echo
     echo '=== Directory structure ==='
@@ -360,11 +360,11 @@ echo "3. Push to main/master branch to trigger deployment"
 echo "4. Monitor deployment in GitHub Actions"
 echo
 echo -e "${BLUE}Useful commands on server:${NC}"
-echo "- sudo /usr/local/bin/ai-chat-bot-status.sh"
+echo "- /usr/local/bin/ai-chat-bot-status.sh"
 echo "- docker-compose -f /opt/ai-chat-bot/docker-compose.prod.yml logs -f"
 echo "- docker system prune -f (cleanup)"
 echo
 echo -e "${YELLOW}Security reminder:${NC}"
 echo "- Keep your SSH keys secure"
-echo "- Regularly update the server: sudo apt update && sudo apt upgrade"
+echo "- Regularly update the server: apt update && apt upgrade"
 echo "- Monitor logs and system resources"
