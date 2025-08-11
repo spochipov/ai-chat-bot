@@ -62,8 +62,8 @@ fi
 
 log "Debug pwd"
 pwd
-log "Debug ln -s"
-ln -s
+log "Debug ls -l"
+ls -l
 log "Debug .env"
 cat .env
 
