@@ -28,11 +28,16 @@ COPY package.json yarn.lock ./
 # Установка зависимостей
 RUN yarn install --frozen-lockfile
 
-# Установка прав доступа для исполняемых файлов
-RUN chmod +x node_modules/.bin/*
+# Копирование исходного кода (исключая node_modules)
+COPY src ./src
+COPY prisma ./prisma
+COPY scripts ./scripts
+COPY tsconfig.json ./
+COPY .eslintrc.js ./
+COPY .prettierrc ./
 
-# Копирование исходного кода
-COPY . .
+# Переустановка Prisma для исправления поврежденных файлов
+RUN yarn add prisma @prisma/client --force
 
 # Генерация Prisma клиента
 RUN npx prisma generate
@@ -72,17 +77,22 @@ COPY package.json yarn.lock ./
 # Установка всех зависимостей (включая dev)
 RUN yarn install --frozen-lockfile
 
-# Установка прав доступа для исполняемых файлов
-RUN chmod +x node_modules/.bin/*
+# Копирование исходного кода (исключая node_modules)
+COPY src ./src
+COPY prisma ./prisma
+COPY scripts ./scripts
+COPY tsconfig.json ./
+COPY .eslintrc.js ./
+COPY .prettierrc ./
 
-# Копирование исходного кода
-COPY . .
+# Переустановка Prisma для исправления поврежденных файлов
+RUN yarn add prisma @prisma/client --force
 
 # Генерация Prisma клиента
-RUN yarn prisma generate
+RUN npx prisma generate
 
-# Сборка приложения
-RUN yarn build
+# Сборка приложения с поддержкой path aliases
+RUN yarn add -D tsconfig-paths && yarn build
 
 # Production stage
 FROM node:18-alpine AS production
@@ -110,12 +120,13 @@ RUN adduser -S nodejs -u 1001
 COPY package.json yarn.lock ./
 
 # Установка только production зависимостей
-RUN if [ "$YARN_PRODUCTION" = "true" ]; then yarn install --frozen-lockfile --production; else yarn install --frozen-lockfile; fi && yarn cache clean
+RUN if [ "$YARN_PRODUCTION" = "true" ]; then yarn install --frozen-lockfile --production; else yarn install --frozen-lockfile; fi && yarn add tsconfig-paths && yarn cache clean
 
 # Копирование собранного приложения
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
+COPY --from=builder /app/tsconfig.json ./tsconfig.json
 
 # Создание директории для загрузок
 RUN mkdir -p uploads && chown -R nodejs:nodejs uploads
