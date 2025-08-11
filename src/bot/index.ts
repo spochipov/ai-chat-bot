@@ -1,6 +1,10 @@
 import { Telegraf, Context, session } from 'telegraf';
 import { botLogger } from '../utils/logger';
-import { loadUserMiddleware, authMiddleware, adminMiddleware } from './middleware/auth';
+import {
+  loadUserMiddleware,
+  authMiddleware,
+  adminMiddleware,
+} from './middleware/auth';
 import { rateLimitMiddleware } from './middleware/rateLimit';
 import { loggingMiddleware } from './middleware/logging';
 import { errorHandler } from './middleware/errorHandler';
@@ -95,7 +99,10 @@ bot.on(['voice', 'audio'], audioHandler);
 
 // Обработка пересылаемых сообщений (должна быть перед обработкой текста)
 bot.use(async (ctx, next) => {
-  if (ctx.message && (('forward_from' in ctx.message) || ('forward_from_chat' in ctx.message))) {
+  if (
+    ctx.message &&
+    ('forward_from' in ctx.message || 'forward_from_chat' in ctx.message)
+  ) {
     await forwardHandler(ctx as any);
     return;
   }

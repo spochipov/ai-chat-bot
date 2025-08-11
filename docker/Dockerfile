@@ -94,6 +94,9 @@ RUN npx prisma generate
 # Сборка приложения с поддержкой path aliases
 RUN yarn add -D tsconfig-paths && yarn build
 
+# Проверим что файлы скомпилировались
+RUN ls -la dist/
+
 # Production stage
 FROM node:18-alpine AS production
 

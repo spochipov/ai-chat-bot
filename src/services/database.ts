@@ -8,6 +8,12 @@ class DatabaseService {
   private constructor() {
     this.prisma = new PrismaClient({
       log: ['info', 'warn', 'error'],
+      errorFormat: 'pretty',
+      datasources: {
+        db: {
+          url: process.env.DATABASE_URL,
+        },
+      },
     });
   }
 

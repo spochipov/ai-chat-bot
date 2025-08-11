@@ -3,13 +3,15 @@ import { apiLogger } from '../utils/logger';
 
 interface OpenRouterMessage {
   role: 'user' | 'assistant' | 'system';
-  content: string | Array<{
-    type: 'text' | 'image_url';
-    text?: string;
-    image_url?: {
-      url: string;
-    };
-  }>;
+  content:
+    | string
+    | Array<{
+        type: 'text' | 'image_url';
+        text?: string;
+        image_url?: {
+          url: string;
+        };
+      }>;
 }
 
 interface OpenRouterResponse {
