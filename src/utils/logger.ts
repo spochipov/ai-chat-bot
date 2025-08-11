@@ -14,9 +14,9 @@ const logFormat = winston.format.combine(
 );
 
 // Безопасная сериализация объектов с циклическими ссылками
-const safeStringify = (obj: any): string => {
+const safeStringify = (obj: unknown): string => {
   const seen = new WeakSet();
-  return JSON.stringify(obj, (_key, val) => {
+  return JSON.stringify(obj, (_key, val: unknown) => {
     if (val != null && typeof val === 'object') {
       if (seen.has(val)) {
         return '[Circular]';
@@ -33,8 +33,9 @@ const consoleFormat = winston.format.combine(
   winston.format.timestamp({
     format: 'YYYY-MM-DD HH:mm:ss',
   }),
-  winston.format.printf(({ timestamp, level, message, ...meta }) => {
-    let msg = `${timestamp} [${level}]: ${message}`;
+  winston.format.printf(info => {
+    const { timestamp, level, message, ...meta } = info;
+    let msg = `${String(timestamp)} [${String(level)}]: ${String(message)}`;
     if (Object.keys(meta).length > 0) {
       try {
         msg += ` ${safeStringify(meta)}`;

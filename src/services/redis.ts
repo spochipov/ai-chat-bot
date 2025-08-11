@@ -9,7 +9,12 @@ class RedisService {
     const redisUrl = process.env.REDIS_URL || 'redis://localhost:6379';
     const redisPassword = process.env.REDIS_PASSWORD;
 
-    const options: any = {
+    const options: {
+      enableReadyCheck: boolean;
+      maxRetriesPerRequest: number;
+      lazyConnect: boolean;
+      password?: string;
+    } = {
       enableReadyCheck: true,
       maxRetriesPerRequest: 3,
       lazyConnect: true,
@@ -79,7 +84,7 @@ class RedisService {
   // Методы для работы с сессиями пользователей
   public static async setUserSession(
     userId: string,
-    data: any,
+    data: unknown,
     ttl: number = 86400
   ): Promise<void> {
     const client = RedisService.getClient();
@@ -87,7 +92,7 @@ class RedisService {
     await client.setex(key, ttl, JSON.stringify(data));
   }
 
-  public static async getUserSession(userId: string): Promise<any | null> {
+  public static async getUserSession(userId: string): Promise<unknown> {
     const client = RedisService.getClient();
     const key = `user_session:${userId}`;
     const data = await client.get(key);
@@ -103,7 +108,7 @@ class RedisService {
   // Методы для работы с контекстом чата
   public static async setChatContext(
     userId: string,
-    messages: any[],
+    messages: unknown[],
     ttl: number = 3600
   ): Promise<void> {
     const client = RedisService.getClient();
@@ -111,7 +116,9 @@ class RedisService {
     await client.setex(key, ttl, JSON.stringify(messages));
   }
 
-  public static async getChatContext(userId: string): Promise<any[] | null> {
+  public static async getChatContext(
+    userId: string
+  ): Promise<unknown[] | null> {
     const client = RedisService.getClient();
     const key = `chat_context:${userId}`;
     const data = await client.get(key);
@@ -140,10 +147,13 @@ class RedisService {
     const currentCount = await client.zcard(key);
 
     if (currentCount >= limit) {
-      const oldestRequest = await client.zrange(key, 0, 0, 'WITHSCORES');
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access
+      const oldestRequest: any = await client.zrange(key, 0, 0, 'WITHSCORES');
       const resetTime =
-        oldestRequest.length > 0
-          ? parseInt(oldestRequest[1] as string) + window * 1000
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+        oldestRequest.length > 0 && typeof oldestRequest[1] === 'string'
+          ? // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+            parseInt(oldestRequest[1]) + window * 1000
           : now + window * 1000;
 
       return {
@@ -167,7 +177,7 @@ class RedisService {
   // Методы для кэширования
   public static async set(
     key: string,
-    value: any,
+    value: unknown,
     ttl?: number
   ): Promise<void> {
     const client = RedisService.getClient();
@@ -180,10 +190,17 @@ class RedisService {
     }
   }
 
-  public static async get(key: string): Promise<any | null> {
+  public static async get(key: string): Promise<unknown> {
     const client = RedisService.getClient();
     const data = await client.get(key);
-    return data ? JSON.parse(data) : null;
+    if (data === null) {
+      return null;
+    }
+    try {
+      return JSON.parse(data);
+    } catch {
+      return data;
+    }
   }
 
   public static async del(key: string): Promise<void> {
@@ -200,7 +217,7 @@ class RedisService {
   // Методы для работы с временными токенами
   public static async setTempToken(
     token: string,
-    data: any,
+    data: unknown,
     ttl: number = 300
   ): Promise<void> {
     const client = RedisService.getClient();
@@ -208,7 +225,7 @@ class RedisService {
     await client.setex(key, ttl, JSON.stringify(data));
   }
 
-  public static async getTempToken(token: string): Promise<any | null> {
+  public static async getTempToken(token: string): Promise<unknown> {
     const client = RedisService.getClient();
     const key = `temp_token:${token}`;
     const data = await client.get(key);
@@ -237,12 +254,15 @@ class RedisService {
   }
 
   // Методы для работы с очередями (если понадобится)
-  public static async pushToQueue(queueName: string, data: any): Promise<void> {
+  public static async pushToQueue(
+    queueName: string,
+    data: unknown
+  ): Promise<void> {
     const client = RedisService.getClient();
     await client.lpush(queueName, JSON.stringify(data));
   }
 
-  public static async popFromQueue(queueName: string): Promise<any | null> {
+  public static async popFromQueue(queueName: string): Promise<unknown> {
     const client = RedisService.getClient();
     const data = await client.rpop(queueName);
     return data ? JSON.parse(data) : null;

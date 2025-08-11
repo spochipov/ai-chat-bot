@@ -101,9 +101,11 @@ class OpenRouterService {
         });
         return config;
       },
-      error => {
+      (error: unknown) => {
         apiLogger.error('OpenRouter request error', error);
-        return Promise.reject(error);
+        return Promise.reject(
+          new Error(error instanceof Error ? error.message : 'Request error')
+        );
       }
     );
 
@@ -115,13 +117,20 @@ class OpenRouterService {
         });
         return response;
       },
-      error => {
-        apiLogger.error('OpenRouter response error', {
-          status: error.response?.status,
-          data: error.response?.data,
-          message: error.message,
-        });
-        return Promise.reject(error);
+      (error: unknown) => {
+        const errorInfo = {
+          status:
+            error && typeof error === 'object' && 'response' in error
+              ? (error as { response?: { status?: number } }).response?.status
+              : undefined,
+          data:
+            error && typeof error === 'object' && 'response' in error
+              ? (error as { response?: { data?: unknown } }).response?.data
+              : undefined,
+          message: error instanceof Error ? error.message : 'Unknown error',
+        };
+        apiLogger.error('OpenRouter response error', errorInfo);
+        return Promise.reject(new Error(errorInfo.message));
       }
     );
   }
@@ -155,7 +164,16 @@ class OpenRouterService {
   }> {
     const instance = OpenRouterService.getInstance();
 
-    const requestData: any = {
+    const requestData: {
+      model: string;
+      messages: OpenRouterMessage[];
+      max_tokens: number;
+      temperature: number;
+      stream: boolean;
+      top_p?: number;
+      frequency_penalty?: number;
+      presence_penalty?: number;
+    } = {
       model: options.model || instance.defaultModel,
       messages,
       max_tokens:
@@ -196,22 +214,36 @@ class OpenRouterService {
         },
         model: response.data.model,
       };
-    } catch (error: any) {
+    } catch (error: unknown) {
       apiLogger.error('Failed to send message to OpenRouter', error);
 
-      if (error.response?.status === 401) {
-        throw new Error('Invalid OpenRouter API key');
-      } else if (error.response?.status === 429) {
-        throw new Error('Rate limit exceeded. Please try again later.');
-      } else if (error.response?.status === 400) {
-        throw new Error(
-          `Bad request: ${error.response.data?.error?.message || 'Invalid request'}`
-        );
-      } else if (error.response?.status >= 500) {
-        throw new Error('OpenRouter service is temporarily unavailable');
+      if (error && typeof error === 'object' && 'response' in error) {
+        const axiosError = error as {
+          response?: {
+            status?: number;
+            data?: { error?: { message?: string } };
+          };
+        };
+
+        if (axiosError.response?.status === 401) {
+          throw new Error('Invalid OpenRouter API key');
+        } else if (axiosError.response?.status === 429) {
+          throw new Error('Rate limit exceeded. Please try again later.');
+        } else if (axiosError.response?.status === 400) {
+          throw new Error(
+            `Bad request: ${axiosError.response.data?.error?.message || 'Invalid request'}`
+          );
+        } else if (
+          axiosError.response?.status &&
+          axiosError.response.status >= 500
+        ) {
+          throw new Error('OpenRouter service is temporarily unavailable');
+        }
       }
 
-      throw new Error(`OpenRouter API error: ${error.message}`);
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error';
+      throw new Error(`OpenRouter API error: ${errorMessage}`);
     }
   }
 
@@ -230,9 +262,11 @@ class OpenRouterService {
         credits: response.data.data.credits,
         usage: response.data.data.usage,
       };
-    } catch (error: any) {
+    } catch (error: unknown) {
       apiLogger.error('Failed to get balance from OpenRouter', error);
-      throw new Error(`Failed to get balance: ${error.message}`);
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error';
+      throw new Error(`Failed to get balance: ${errorMessage}`);
     }
   }
 
@@ -263,9 +297,11 @@ class OpenRouterService {
         contextLength: model.context_length,
         modality: model.architecture.modality,
       }));
-    } catch (error: any) {
+    } catch (error: unknown) {
       apiLogger.error('Failed to get models from OpenRouter', error);
-      throw new Error(`Failed to get models: ${error.message}`);
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error';
+      throw new Error(`Failed to get models: ${errorMessage}`);
     }
   }
 
@@ -314,7 +350,14 @@ class OpenRouterService {
       },
     ];
 
-    const options: any = {};
+    const options: {
+      model?: string;
+      maxTokens?: number;
+      temperature?: number;
+      topP?: number;
+      frequencyPenalty?: number;
+      presencePenalty?: number;
+    } = {};
     if (model) {
       options.model = model;
     }

@@ -207,7 +207,9 @@ class DatabaseService {
     endDate?: Date
   ) {
     const client = DatabaseService.getClient();
-    const where: any = { userId };
+    const where: { userId: string; date?: { gte?: Date; lte?: Date } } = {
+      userId,
+    };
 
     if (startDate || endDate) {
       where.date = {};
@@ -223,7 +225,7 @@ class DatabaseService {
 
   public static async getTotalUsage(startDate?: Date, endDate?: Date) {
     const client = DatabaseService.getClient();
-    const where: any = {};
+    const where: { date?: { gte?: Date; lte?: Date } } = {};
 
     if (startDate || endDate) {
       where.date = {};

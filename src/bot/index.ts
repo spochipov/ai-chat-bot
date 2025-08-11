@@ -103,7 +103,7 @@ bot.use(async (ctx, next) => {
     ctx.message &&
     ('forward_from' in ctx.message || 'forward_from_chat' in ctx.message)
   ) {
-    await forwardHandler(ctx as any);
+    await forwardHandler(ctx);
     return;
   }
   return next();
