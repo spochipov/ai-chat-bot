@@ -60,6 +60,13 @@ else
     SKIP_HEALTH_CHECKS=false
 fi
 
+log "Debug pwd"
+pwd
+log "Debug ln -s"
+ln -s
+log "Debug .env"
+cat .env
+
 # Загрузка переменных окружения
 source .env
 
