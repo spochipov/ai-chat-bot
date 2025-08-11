@@ -236,7 +236,7 @@ jobs:
         "
 
     - name: Send staging notification
-      if: always()
+      if: always() && env.SLACK_WEBHOOK_URL != ''
       uses: 8398a7/action-slack@v3
       with:
         status: ${{ job.status }}
@@ -250,4 +250,3 @@ jobs:
           Staging URL: http://${{ secrets.STAGING_SERVER_HOST }}:8080
       env:
         SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
-      if: env.SLACK_WEBHOOK_URL != ''
