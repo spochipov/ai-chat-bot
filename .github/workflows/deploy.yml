@@ -179,14 +179,20 @@ jobs:
           # Install jq if not present
           if ! command -v jq &> /dev/null; then
             echo 'Installing jq...'
-            # Try package managers first with sudo
-            if command -v apt-get &> /dev/null && sudo -n true 2>/dev/null; then
-              sudo apt-get update && sudo apt-get install -y jq
-            elif command -v yum &> /dev/null && sudo -n true 2>/dev/null; then
-              sudo yum install -y jq
-            elif command -v dnf &> /dev/null && sudo -n true 2>/dev/null; then
-              sudo dnf install -y jq
-            else
+            # Try package managers first (without sudo since it's not available)
+            if command -v apt-get &> /dev/null; then
+              echo 'Trying apt-get without sudo...'
+              apt-get update && apt-get install -y jq 2>/dev/null || echo 'apt-get failed, trying manual installation'
+            elif command -v yum &> /dev/null; then
+              echo 'Trying yum without sudo...'
+              yum install -y jq 2>/dev/null || echo 'yum failed, trying manual installation'
+            elif command -v dnf &> /dev/null; then
+              echo 'Trying dnf without sudo...'
+              dnf install -y jq 2>/dev/null || echo 'dnf failed, trying manual installation'
+            fi
+            
+            # If package managers failed or not available, install manually
+            if ! command -v jq &> /dev/null; then
               echo 'Installing jq manually to user directory...'
               mkdir -p ~/bin
               wget -O ~/bin/jq https://github.com/stedolan/jq/releases/download/jq-1.6/jq-linux64
@@ -197,8 +203,11 @@ jobs:
           else
             echo 'jq is already installed'
           fi
+          
           # Verify jq installation
+          export PATH=~/bin:\$PATH
           if command -v jq &> /dev/null; then
+            echo 'jq successfully installed/found:'
             jq --version
           else
             echo 'jq installation failed'
