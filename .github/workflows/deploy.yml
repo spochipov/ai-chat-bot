@@ -184,6 +184,7 @@ jobs:
         JWT_SECRET=${{ vars.JWT_SECRET }}
         ENCRYPTION_KEY=${{ vars.ENCRYPTION_KEY }}
         POSTGRES_DB=${{ vars.POSTGRES_DB }}
+        DATABASE_URL=${{ vars.DATABASE_URL }}
         POSTGRES_USER=${{ vars.POSTGRES_USER }}
         POSTGRES_PASSWORD=${{ vars.POSTGRES_PASSWORD }}
         REDIS_PASSWORD=${{ vars.REDIS_PASSWORD }}
