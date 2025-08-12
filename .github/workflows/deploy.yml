@@ -173,12 +173,15 @@ jobs:
           scp docker/nginx.conf ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/opt/ai-chat-bot/nginx.conf
           scp .env.prod ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/opt/ai-chat-bot/.env
 
-      - name: Inject GitHub Environment Variables into .env
+      - name: Create final .env from .env.prod + GitHub vars
         run: |
-          # Проходим по всем переменным окружения
+          cp .env.prod .env
           for var in $(printenv | cut -d= -f1); do
+            # Пропускаем системные переменные GitHub Actions
+            if [[ "$var" =~ ^(GITHUB_|RUNNER_|ACTIONS_|CI$) ]]; then
+              continue
+            fi
             value=$(printenv "$var")
-            # Если переменная уже есть в .env — заменяем, иначе добавляем
             if grep -q "^$var=" .env; then
               sed -i "s|^$var=.*|$var=${value}|" .env
             else
