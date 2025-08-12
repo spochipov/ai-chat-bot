@@ -223,7 +223,18 @@ jobs:
           cd /opt/ai-chat-bot
           # Ensure jq is in PATH
           export PATH=~/bin:\$PATH
+          
+          # Debug: Check if jq is available
+          echo 'Checking jq availability...'
+          which jq || echo 'jq not found in PATH'
+          jq --version || echo 'jq version check failed'
+          
+          # Debug: Show GitHub Variables JSON
+          echo 'GitHub Variables JSON:'
+          echo '${{ env.VARS_JSON }}'
+          
           # Parse GitHub Variables and override corresponding values in .env
+          echo 'Processing GitHub Variables...'
           echo '${{ env.VARS_JSON }}' | jq -r 'to_entries[] | \"\\(.key)=\\(.value)\"' | while IFS='=' read -r key value; do
             if [ -n \"\$value\" ] && grep -q \"^\$key=\" .env; then
               echo \"Overriding \$key in .env\"
@@ -233,10 +244,18 @@ jobs:
               echo \"\$key=\$value\" >> .env
             fi
           done
+          
           # Remove DATABASE_URL if it exists (it will be generated dynamically)
+          echo 'Removing DATABASE_URL from .env...'
           sed -i '/^DATABASE_URL=/d' .env
+          
           # Always add Docker image
+          echo 'Adding Docker image to .env...'
           echo 'DOCKER_IMAGE=${{ needs.build.outputs.image }}' >> .env
+          
+          # Debug: Show final .env content (with masked passwords)
+          echo 'Final .env content (passwords masked):'
+          sed 's/PASSWORD=.*/PASSWORD=***MASKED***/g; s/SECRET=.*/SECRET=***MASKED***/g; s/KEY=.*/KEY=***MASKED***/g; s/TOKEN=.*/TOKEN=***MASKED***/g' .env
         "
 
     - name: Login to Container Registry on server
