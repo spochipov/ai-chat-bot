@@ -180,16 +180,16 @@ jobs:
           if ! command -v jq &> /dev/null; then
             echo 'Installing jq...'
             if command -v apt-get &> /dev/null; then
-              sudo apt-get update && sudo apt-get install -y jq
+              apt-get update && apt-get install -y jq
             elif command -v yum &> /dev/null; then
-              sudo yum install -y jq
+              yum install -y jq
             elif command -v dnf &> /dev/null; then
-              sudo dnf install -y jq
+              dnf install -y jq
             else
               echo 'Package manager not found, trying to install jq manually...'
               wget -O /tmp/jq https://github.com/stedolan/jq/releases/download/jq-1.6/jq-linux64
               chmod +x /tmp/jq
-              sudo mv /tmp/jq /usr/local/bin/jq
+              mv /tmp/jq /usr/local/bin/jq
             fi
           else
             echo 'jq is already installed'
