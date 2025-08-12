@@ -118,6 +118,8 @@ done
 
 # Применение миграций базы данных
 log "Running database migrations..."
+echo ${POSTGRES_PASSWORD}
+cat .env
 docker-compose -f docker-compose.prod.yml run --rm app npx prisma migrate deploy
 
 # Генерация Prisma клиента
