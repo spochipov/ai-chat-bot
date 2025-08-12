@@ -171,28 +171,26 @@ jobs:
         scp docker-compose.prod.yml ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/opt/ai-chat-bot/
         scp scripts/deploy.sh ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/opt/ai-chat-bot/
         scp docker/nginx.conf ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/opt/ai-chat-bot/nginx.conf
+        scp .env.prod ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/opt/ai-chat-bot/.env
 
-    - name: Create .env file on server
+    - name: Override environment variables from GitHub Variables
+      env:
+        VARS_JSON: ${{ toJson(vars) }}
       run: |
         ssh ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} "
-          cat > /opt/ai-chat-bot/.env << EOF
-        NODE_ENV=production
-        BOT_TOKEN=${{ vars.BOT_TOKEN }}
-        ADMIN_TELEGRAM_ID=${{ vars.ADMIN_TELEGRAM_ID }}
-        OPENROUTER_API_KEY=${{ vars.OPENROUTER_API_KEY }}
-        OPENROUTER_MODEL=${{ vars.OPENROUTER_MODEL }}
-        JWT_SECRET=${{ vars.JWT_SECRET }}
-        ENCRYPTION_KEY=${{ vars.ENCRYPTION_KEY }}
-        POSTGRES_DB=${{ vars.POSTGRES_DB }}
-        DATABASE_URL=${{ vars.DATABASE_URL }}
-        POSTGRES_USER=${{ vars.POSTGRES_USER }}
-        POSTGRES_PASSWORD=${{ vars.POSTGRES_PASSWORD }}
-        REDIS_PASSWORD=${{ vars.REDIS_PASSWORD }}
-        LOG_LEVEL=${{ vars.LOG_LEVEL }}
-        MAX_FILE_SIZE=${{ vars.MAX_FILE_SIZE }}
-        ALLOWED_FILE_TYPES=${{ vars.ALLOWED_FILE_TYPES }}
-        DOCKER_IMAGE=${{ needs.build.outputs.image }}
-        EOF
+          cd /opt/ai-chat-bot
+          # Parse GitHub Variables and override corresponding values in .env
+          echo '${{ env.VARS_JSON }}' | jq -r 'to_entries[] | \"\\(.key)=\\(.value)\"' | while IFS='=' read -r key value; do
+            if [ -n \"\$value\" ] && grep -q \"^\$key=\" .env; then
+              echo \"Overriding \$key in .env\"
+              sed -i \"s|^\$key=.*|\$key=\$value|g\" .env
+            elif [ -n \"\$value\" ]; then
+              echo \"Adding new variable \$key to .env\"
+              echo \"\$key=\$value\" >> .env
+            fi
+          done
+          # Always add Docker image
+          echo 'DOCKER_IMAGE=${{ needs.build.outputs.image }}' >> .env
         "
 
     - name: Login to Container Registry on server
