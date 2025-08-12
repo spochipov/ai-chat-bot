@@ -145,7 +145,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: [test, build]
     if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
-    environment: AI Chat Bot
+    environment: production
 
     steps:
     - name: Checkout code
@@ -177,19 +177,19 @@ jobs:
         ssh ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} "
           cat > /opt/ai-chat-bot/.env << EOF
         NODE_ENV=production
-        BOT_TOKEN=${{ env.BOT_TOKEN }}
-        ADMIN_TELEGRAM_ID=${{ env.ADMIN_TELEGRAM_ID }}
-        OPENROUTER_API_KEY=${{ env.OPENROUTER_API_KEY }}
-        OPENROUTER_MODEL=${{ env.OPENROUTER_MODEL }}
-        JWT_SECRET=${{ env.JWT_SECRET }}
-        ENCRYPTION_KEY=${{ env.ENCRYPTION_KEY }}
-        POSTGRES_DB=${{ env.POSTGRES_DB }}
-        POSTGRES_USER=${{ env.POSTGRES_USER }}
-        POSTGRES_PASSWORD=${{ env.POSTGRES_PASSWORD }}
-        REDIS_PASSWORD=${{ env.REDIS_PASSWORD }}
-        LOG_LEVEL=${{ env.LOG_LEVEL }}
-        MAX_FILE_SIZE=${{ env.MAX_FILE_SIZE }}
-        ALLOWED_FILE_TYPES=${{ env.ALLOWED_FILE_TYPES }}
+        BOT_TOKEN=${{ vars.BOT_TOKEN }}
+        ADMIN_TELEGRAM_ID=${{ vars.ADMIN_TELEGRAM_ID }}
+        OPENROUTER_API_KEY=${{ vars.OPENROUTER_API_KEY }}
+        OPENROUTER_MODEL=${{ vars.OPENROUTER_MODEL }}
+        JWT_SECRET=${{ vars.JWT_SECRET }}
+        ENCRYPTION_KEY=${{ vars.ENCRYPTION_KEY }}
+        POSTGRES_DB=${{ vars.POSTGRES_DB }}
+        POSTGRES_USER=${{ vars.POSTGRES_USER }}
+        POSTGRES_PASSWORD=${{ vars.POSTGRES_PASSWORD }}
+        REDIS_PASSWORD=${{ vars.REDIS_PASSWORD }}
+        LOG_LEVEL=${{ vars.LOG_LEVEL }}
+        MAX_FILE_SIZE=${{ vars.MAX_FILE_SIZE }}
+        ALLOWED_FILE_TYPES=${{ vars.ALLOWED_FILE_TYPES }}
         DOCKER_IMAGE=${{ needs.build.outputs.image }}
         EOF
         "
