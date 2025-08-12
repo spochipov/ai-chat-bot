@@ -235,13 +235,19 @@ jobs:
           
           # Parse GitHub Variables and override corresponding values in .env
           echo 'Processing GitHub Variables...'
-          echo '${{ env.VARS_JSON }}' | jq -r 'to_entries[] | \"\\(.key)=\\(.value)\"' | while IFS='=' read -r key value; do
-            if [ -n \"\$value\" ] && grep -q \"^\$key=\" .env; then
-              echo \"Overriding \$key in .env\"
-              sed -i \"s|^\$key=.*|\$key=\$value|g\" .env
-            elif [ -n \"\$value\" ]; then
-              echo \"Adding new variable \$key to .env\"
-              echo \"\$key=\$value\" >> .env
+          # First, clean up the JSON to handle empty values
+          CLEAN_JSON=\$(echo '${{ env.VARS_JSON }}' | jq 'with_entries(if .value == \" \" or .value == \"\" then .value = \"\" else . end)')
+          echo \"Cleaned JSON: \$CLEAN_JSON\"
+          
+          echo \"\$CLEAN_JSON\" | jq -r 'to_entries[] | \"\\(.key)=\\(.value)\"' | while IFS='=' read -r key value; do
+            if [ -n \"\$key\" ]; then
+              if grep -q \"^\$key=\" .env; then
+                echo \"Overriding \$key in .env\"
+                sed -i \"s|^\$key=.*|\$key=\$value|g\" .env
+              else
+                echo \"Adding new variable \$key to .env\"
+                echo \"\$key=\$value\" >> .env
+              fi
             fi
           done
           
