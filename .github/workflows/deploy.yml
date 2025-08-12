@@ -173,9 +173,6 @@ jobs:
           scp docker/nginx.conf ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/opt/ai-chat-bot/nginx.conf
           scp .env.prod ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/opt/ai-chat-bot/.env
 
-      - name: Copy .env.prod to .env
-        run: cp .env.prod .env
-
       - name: Inject GitHub Environment Variables into .env
         run: |
           # Проходим по всем переменным окружения
@@ -191,6 +188,10 @@ jobs:
 
       - name: Show final .env
         run: cat .env
+
+      - name: Send final .env to server
+        run: |
+          scp .env ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/opt/ai-chat-bot/.env
 
       - name: Login to Container Registry on server
         run: |
