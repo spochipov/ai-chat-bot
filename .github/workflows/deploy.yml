@@ -179,20 +179,30 @@ jobs:
           # Install jq if not present
           if ! command -v jq &> /dev/null; then
             echo 'Installing jq...'
-            if command -v apt-get &> /dev/null; then
-              apt-get update && apt-get install -y jq
-            elif command -v yum &> /dev/null; then
-              yum install -y jq
-            elif command -v dnf &> /dev/null; then
-              dnf install -y jq
+            # Try package managers first with sudo
+            if command -v apt-get &> /dev/null && sudo -n true 2>/dev/null; then
+              sudo apt-get update && sudo apt-get install -y jq
+            elif command -v yum &> /dev/null && sudo -n true 2>/dev/null; then
+              sudo yum install -y jq
+            elif command -v dnf &> /dev/null && sudo -n true 2>/dev/null; then
+              sudo dnf install -y jq
             else
-              echo 'Package manager not found, trying to install jq manually...'
-              wget -O /tmp/jq https://github.com/stedolan/jq/releases/download/jq-1.6/jq-linux64
-              chmod +x /tmp/jq
-              mv /tmp/jq /usr/local/bin/jq
+              echo 'Installing jq manually to user directory...'
+              mkdir -p ~/bin
+              wget -O ~/bin/jq https://github.com/stedolan/jq/releases/download/jq-1.6/jq-linux64
+              chmod +x ~/bin/jq
+              export PATH=~/bin:\$PATH
+              echo 'export PATH=~/bin:\$PATH' >> ~/.bashrc
             fi
           else
             echo 'jq is already installed'
+          fi
+          # Verify jq installation
+          if command -v jq &> /dev/null; then
+            jq --version
+          else
+            echo 'jq installation failed'
+            exit 1
           fi
         "
 
@@ -202,6 +212,8 @@ jobs:
       run: |
         ssh ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} "
           cd /opt/ai-chat-bot
+          # Ensure jq is in PATH
+          export PATH=~/bin:\$PATH
           # Parse GitHub Variables and override corresponding values in .env
           echo '${{ env.VARS_JSON }}' | jq -r 'to_entries[] | \"\\(.key)=\\(.value)\"' | while IFS='=' read -r key value; do
             if [ -n \"\$value\" ] && grep -q \"^\$key=\" .env; then
