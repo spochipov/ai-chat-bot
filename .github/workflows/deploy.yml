@@ -173,28 +173,42 @@ jobs:
           scp docker/nginx.conf ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/opt/ai-chat-bot/nginx.conf
           scp .env.prod ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/opt/ai-chat-bot/.env
 
-      - name: Create final .env from .env.prod + GitHub vars
+      - name: Override environment variables from GitHub Variables
+        env:
+          VARS_JSON: ${{ toJson(vars) }}
         run: |
-          cp .env.prod .env
-          for var in $(printenv | cut -d= -f1); do
-            # Пропускаем системные переменные GitHub Actions
-            if [[ "$var" =~ ^(GITHUB_|RUNNER_|ACTIONS_|CI$) ]]; then
-              continue
-            fi
-            value=$(printenv "$var")
-            if grep -q "^$var=" .env; then
-              sed -i "s|^$var=.*|$var=${value}|" .env
-            else
-              echo "$var=${value}" >> .env
-            fi
-          done
-
-      - name: Show final .env
-        run: cat .env
-
-      - name: Send final .env to server
-        run: |
-          scp .env ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/opt/ai-chat-bot/.env
+          ssh ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} "
+            cd /opt/ai-chat-bot
+            # Debug: Show GitHub Variables JSON
+            echo 'GitHub Variables JSON:'
+            echo '${{ env.VARS_JSON }}'
+          
+            # Parse GitHub Variables and override corresponding values in .env
+            echo 'Processing GitHub Variables...'
+            # First, clean up the JSON to handle empty values
+            CLEAN_JSON=\$(echo '${{ env.VARS_JSON }}' | jq 'with_entries(if .value == \" \" or .value == \"\" then .value = \"\" else . end)')
+            echo \"Cleaned JSON: \$CLEAN_JSON\"
+          
+            echo \"\$CLEAN_JSON\" | jq -r 'to_entries[] | \"\\(.key)=\\(.value)\"' | while IFS='=' read -r key value; do
+              if [ -n \"\$key\" ]; then
+                if grep -q \"^\$key=\" .env; then
+                  echo \"Overriding \$key in .env\"
+                  sed -i \"s|^\$key=.*|\$key=\$value|g\" .env
+                else
+                  echo \"Adding new variable \$key to .env\"
+                  echo \"\$key=\$value\" >> .env
+                fi
+              fi
+            done
+          
+            # Always add Docker image
+            echo 'Adding Docker image to .env...'
+            echo 'DOCKER_IMAGE=${{ needs.build.outputs.image }}' >> .env
+          
+            # Debug: Show final .env content (with masked passwords)
+            echo 'Final .env content (passwords masked):'
+            sed 's/PASSWORD=.*/PASSWORD=***MASKED***/g; s/SECRET=.*/SECRET=***MASKED***/g; s/KEY=.*/KEY=***MASKED***/g; s/TOKEN=.*/TOKEN=***MASKED***/g' .env
+          "
 
       - name: Login to Container Registry on server
         run: |
