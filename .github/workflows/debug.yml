@@ -1,0 +1,22 @@
+name: Dump all environment variables
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main, master ]
+
+jobs:
+  dump-env:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Показать все переменные окружения в логе
+        run: env | sort
+
+      - name: Сохранить переменные в файл
+        run: |
+          env | sort > env-vars.txt
+
+      - name: Загрузить файл как артефакт
+        uses: actions/upload-artifact@v4
+        with:
+          name: environment-variables
+          path: env-vars.txt

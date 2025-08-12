@@ -175,21 +175,21 @@ jobs:
     - name: Create .env file on server
       run: |
         ssh ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} "
-          cat > /opt/ai-chat-bot/.env << 'EOF'
+          cat > /opt/ai-chat-bot/.env << EOF
         NODE_ENV=production
-        BOT_TOKEN=${{ secrets.BOT_TOKEN }}
-        ADMIN_TELEGRAM_ID=${{ secrets.ADMIN_TELEGRAM_ID }}
-        OPENROUTER_API_KEY=${{ secrets.OPENROUTER_API_KEY }}
-        OPENROUTER_MODEL=${{ secrets.OPENROUTER_MODEL }}
-        JWT_SECRET=${{ secrets.JWT_SECRET }}
-        ENCRYPTION_KEY=${{ secrets.ENCRYPTION_KEY }}
-        POSTGRES_DB=${{ secrets.POSTGRES_DB }}
-        POSTGRES_USER=${{ secrets.POSTGRES_USER }}
-        POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
-        REDIS_PASSWORD=${{ secrets.REDIS_PASSWORD }}
-        LOG_LEVEL=${{ secrets.LOG_LEVEL }}
-        MAX_FILE_SIZE=${{ secrets.MAX_FILE_SIZE }}
-        ALLOWED_FILE_TYPES=${{ secrets.ALLOWED_FILE_TYPES }}
+        BOT_TOKEN=${{ env.BOT_TOKEN }}
+        ADMIN_TELEGRAM_ID=${{ env.ADMIN_TELEGRAM_ID }}
+        OPENROUTER_API_KEY=${{ env.OPENROUTER_API_KEY }}
+        OPENROUTER_MODEL=${{ env.OPENROUTER_MODEL }}
+        JWT_SECRET=${{ env.JWT_SECRET }}
+        ENCRYPTION_KEY=${{ env.ENCRYPTION_KEY }}
+        POSTGRES_DB=${{ env.POSTGRES_DB }}
+        POSTGRES_USER=${{ env.POSTGRES_USER }}
+        POSTGRES_PASSWORD=${{ env.POSTGRES_PASSWORD }}
+        REDIS_PASSWORD=${{ env.REDIS_PASSWORD }}
+        LOG_LEVEL=${{ env.LOG_LEVEL }}
+        MAX_FILE_SIZE=${{ env.MAX_FILE_SIZE }}
+        ALLOWED_FILE_TYPES=${{ env.ALLOWED_FILE_TYPES }}
         DOCKER_IMAGE=${{ needs.build.outputs.image }}
         EOF
         "
