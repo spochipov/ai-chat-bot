@@ -9,11 +9,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Показать все переменные окружения в логе
-        run: env | sort
+        run: vars | sort
 
       - name: Сохранить переменные в файл
         run: |
-          env | sort > env-vars.txt
+          vars | sort > env-vars.txt
 
       - name: Загрузить файл как артефакт
         uses: actions/upload-artifact@v4
