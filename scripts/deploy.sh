@@ -71,7 +71,7 @@ cat .env
 source .env
 
 # Проверка обязательных переменных
-required_vars=("BOT_TOKEN" "OPENROUTER_API_KEY" "DATABASE_URL" "REDIS_URL")
+required_vars=("BOT_TOKEN" "OPENROUTER_API_KEY" "POSTGRES_PASSWORD")
 for var in "${required_vars[@]}"; do
     if [[ -z "${!var}" ]]; then
         error "Required environment variable $var is not set"
