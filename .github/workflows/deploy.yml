@@ -46,45 +46,45 @@ jobs:
           - 6379:6379
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-    - name: Setup Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: '22'
-        cache: 'yarn'
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'yarn'
 
-    - name: Install dependencies
-      run: yarn install --frozen-lockfile
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
 
-    - name: Generate Prisma client
-      run: npx prisma generate
-      env:
-        DATABASE_URL: postgresql://test_user:test_password@localhost:5432/test_db
+      - name: Generate Prisma client
+        run: npx prisma generate
+        env:
+          DATABASE_URL: postgresql://test_user:test_password@localhost:5432/test_db
 
-    - name: Run database migrations
-      run: npx prisma migrate deploy
-      env:
-        DATABASE_URL: postgresql://test_user:test_password@localhost:5432/test_db
+      - name: Run database migrations
+        run: npx prisma migrate deploy
+        env:
+          DATABASE_URL: postgresql://test_user:test_password@localhost:5432/test_db
 
-    - name: Run linting
-      run: yarn lint
+      - name: Run linting
+        run: yarn lint
 
-    - name: Run tests
-      run: yarn test:coverage
-      env:
-        DATABASE_URL: postgresql://test_user:test_password@localhost:5432/test_db
-        REDIS_URL: redis://localhost:6379
-        BOT_TOKEN: test_token
-        OPENROUTER_API_KEY: test_key
-        JWT_SECRET: test_jwt_secret
-        ENCRYPTION_KEY: test_encryption_key
-        ADMIN_TELEGRAM_ID: 123456789
+      - name: Run tests
+        run: yarn test:coverage
+        env:
+          DATABASE_URL: postgresql://test_user:test_password@localhost:5432/test_db
+          REDIS_URL: redis://localhost:6379
+          BOT_TOKEN: test_token
+          OPENROUTER_API_KEY: test_key
+          JWT_SECRET: test_jwt_secret
+          ENCRYPTION_KEY: test_encryption_key
+          ADMIN_TELEGRAM_ID: 123456789
 
-    - name: Upload coverage reports
-      uses: codecov/codecov-action@v3
-      if: success()
+      - name: Upload coverage reports
+        uses: codecov/codecov-action@v3
+        if: success()
 
   build:
     name: Build Docker Image
@@ -97,227 +97,155 @@ jobs:
       digest: ${{ steps.build.outputs.digest }}
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v3
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
-    - name: Log in to Container Registry
-      uses: docker/login-action@v3
-      with:
-        registry: ${{ env.REGISTRY }}
-        username: ${{ github.actor }}
-        password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: Extract metadata
-      id: meta
-      uses: docker/metadata-action@v5
-      with:
-        images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-        tags: |
-          type=ref,event=branch
-          type=ref,event=pr
-          type=sha,prefix={{branch}}-
-          type=raw,value=latest,enable={{is_default_branch}}
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest,enable={{is_default_branch}}
 
-    - name: Build and push Docker image
-      id: build
-      uses: docker/build-push-action@v5
-      with:
-        context: .
-        file: ./docker/Dockerfile
-        target: production
-        push: true
-        tags: ${{ steps.meta.outputs.tags }}
-        labels: ${{ steps.meta.outputs.labels }}
-        cache-from: type=gha
-        cache-to: type=gha,mode=max
-        platforms: linux/amd64
+      - name: Build and push Docker image
+        id: build
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./docker/Dockerfile
+          target: production
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          platforms: linux/amd64
 
-    - name: Output image
-      id: image
-      run: |
-        echo "image=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest" >> $GITHUB_OUTPUT
+      - name: Output image
+        id: image
+        run: |
+          echo "image=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest" >> $GITHUB_OUTPUT
 
   deploy:
     name: Deploy to Server
     runs-on: ubuntu-latest
-    needs: [test, build]
+    needs: [ test, build ]
     if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
     environment: production
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-    - name: Setup SSH
-      uses: webfactory/ssh-agent@v0.8.0
-      with:
-        ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+      - name: Setup SSH
+        uses: webfactory/ssh-agent@v0.8.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
 
-    - name: Add server to known hosts
-      run: |
-        ssh-keyscan -H ${{ secrets.SERVER_HOST }} >> ~/.ssh/known_hosts
+      - name: Add server to known hosts
+        run: |
+          ssh-keyscan -H ${{ secrets.SERVER_HOST }} >> ~/.ssh/known_hosts
 
-    - name: Create deployment directory
-      run: |
-        ssh ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} "
-          mkdir -p /opt/ai-chat-bot
-        "
+      - name: Create deployment directory
+        run: |
+          ssh ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} "
+            mkdir -p /opt/ai-chat-bot
+          "
 
-    - name: Copy deployment files
-      run: |
-        scp docker-compose.prod.yml ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/opt/ai-chat-bot/
-        scp scripts/deploy.sh ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/opt/ai-chat-bot/
-        scp docker/nginx.conf ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/opt/ai-chat-bot/nginx.conf
-        scp .env.prod ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/opt/ai-chat-bot/.env
+      - name: Copy deployment files
+        run: |
+          scp docker-compose.prod.yml ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/opt/ai-chat-bot/
+          scp scripts/deploy.sh ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/opt/ai-chat-bot/
+          scp docker/nginx.conf ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/opt/ai-chat-bot/nginx.conf
+          scp .env.prod ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/opt/ai-chat-bot/.env
 
-    - name: Install jq on server
-      run: |
-        ssh ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} "
-          # Install jq if not present
-          if ! command -v jq &> /dev/null; then
-            echo 'Installing jq...'
-            # Try package managers first (without sudo since it's not available)
-            if command -v apt-get &> /dev/null; then
-              echo 'Trying apt-get without sudo...'
-              apt-get update && apt-get install -y jq 2>/dev/null || echo 'apt-get failed, trying manual installation'
-            elif command -v yum &> /dev/null; then
-              echo 'Trying yum without sudo...'
-              yum install -y jq 2>/dev/null || echo 'yum failed, trying manual installation'
-            elif command -v dnf &> /dev/null; then
-              echo 'Trying dnf without sudo...'
-              dnf install -y jq 2>/dev/null || echo 'dnf failed, trying manual installation'
-            fi
-            
-            # If package managers failed or not available, install manually
-            if ! command -v jq &> /dev/null; then
-              echo 'Installing jq manually to user directory...'
-              mkdir -p ~/bin
-              wget -O ~/bin/jq https://github.com/stedolan/jq/releases/download/jq-1.6/jq-linux64
-              chmod +x ~/bin/jq
-              export PATH=~/bin:\$PATH
-              echo 'export PATH=~/bin:\$PATH' >> ~/.bashrc
-            fi
-          else
-            echo 'jq is already installed'
-          fi
-          
-          # Verify jq installation
-          export PATH=~/bin:\$PATH
-          if command -v jq &> /dev/null; then
-            echo 'jq successfully installed/found:'
-            jq --version
-          else
-            echo 'jq installation failed'
-            exit 1
-          fi
-        "
+      - name: Copy .env.prod to .env
+        run: cp .env.prod .env
 
-    - name: Override environment variables from GitHub Variables
-      env:
-        VARS_JSON: ${{ toJson(vars) }}
-      run: |
-        ssh ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} "
-          cd /opt/ai-chat-bot
-          # Ensure jq is in PATH
-          export PATH=~/bin:\$PATH
-          
-          # Debug: Check if jq is available
-          echo 'Checking jq availability...'
-          which jq || echo 'jq not found in PATH'
-          jq --version || echo 'jq version check failed'
-          
-          # Debug: Show GitHub Variables JSON
-          echo 'GitHub Variables JSON:'
-          echo '${{ env.VARS_JSON }}'
-          
-          # Parse GitHub Variables and override corresponding values in .env
-          echo 'Processing GitHub Variables...'
-          # First, clean up the JSON to handle empty values
-          CLEAN_JSON=\$(echo '${{ env.VARS_JSON }}' | jq 'with_entries(if .value == \" \" or .value == \"\" then .value = \"\" else . end)')
-          echo \"Cleaned JSON: \$CLEAN_JSON\"
-          
-          echo \"\$CLEAN_JSON\" | jq -r 'to_entries[] | \"\\(.key)=\\(.value)\"' | while IFS='=' read -r key value; do
-            if [ -n \"\$key\" ]; then
-              if grep -q \"^\$key=\" .env; then
-                echo \"Overriding \$key in .env\"
-                sed -i \"s|^\$key=.*|\$key=\$value|g\" .env
-              else
-                echo \"Adding new variable \$key to .env\"
-                echo \"\$key=\$value\" >> .env
-              fi
+      - name: Inject GitHub Environment Variables into .env
+        run: |
+          # Проходим по всем переменным окружения
+          for var in $(printenv | cut -d= -f1); do
+            value=$(printenv "$var")
+            # Если переменная уже есть в .env — заменяем, иначе добавляем
+            if grep -q "^$var=" .env; then
+              sed -i "s|^$var=.*|$var=${value}|" .env
+            else
+              echo "$var=${value}" >> .env
             fi
           done
-          
-          # Remove DATABASE_URL if it exists (it will be generated dynamically)
-          echo 'Removing DATABASE_URL from .env...'
-          sed -i '/^DATABASE_URL=/d' .env
-          
-          # Always add Docker image
-          echo 'Adding Docker image to .env...'
-          echo 'DOCKER_IMAGE=${{ needs.build.outputs.image }}' >> .env
-          
-          # Debug: Show final .env content (with masked passwords)
-          echo 'Final .env content (passwords masked):'
-          sed 's/PASSWORD=.*/PASSWORD=***MASKED***/g; s/SECRET=.*/SECRET=***MASKED***/g; s/KEY=.*/KEY=***MASKED***/g; s/TOKEN=.*/TOKEN=***MASKED***/g' .env
-        "
 
-    - name: Login to Container Registry on server
-      run: |
-        ssh ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} "
-          echo ${{ secrets.GITHUB_TOKEN }} | docker login ${{ env.REGISTRY }} -u ${{ github.actor }} --password-stdin
-        "
+      - name: Show final .env
+        run: cat .env
 
-    - name: Pull latest image
-      run: |
-        ssh ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} "
-          cd /opt/ai-chat-bot
-          docker pull ${{ needs.build.outputs.image }}
-        "
+      - name: Login to Container Registry on server
+        run: |
+          ssh ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} "
+            echo ${{ secrets.GITHUB_TOKEN }} | docker login ${{ env.REGISTRY }} -u ${{ github.actor }} --password-stdin
+          "
 
-    - name: Update docker-compose with new image
-      run: |
-        ssh ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} "
-          cd /opt/ai-chat-bot
-          sed -i 's|build:|# build:|g' docker-compose.prod.yml
-          sed -i 's|context: .|# context: .|g' docker-compose.prod.yml
-          sed -i 's|dockerfile: docker/Dockerfile|# dockerfile: docker/Dockerfile|g' docker-compose.prod.yml
-          sed -i 's|target: production|# target: production|g' docker-compose.prod.yml
-          sed -i '/# build:/a\    image: ${{ needs.build.outputs.image }}' docker-compose.prod.yml
-        "
+      - name: Pull latest image
+        run: |
+          ssh ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} "
+            cd /opt/ai-chat-bot
+            docker pull ${{ needs.build.outputs.image }}
+          "
 
-    - name: Deploy application
-      run: |
-        ssh ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} "
-          cd /opt/ai-chat-bot
-          chmod +x deploy.sh
-          ./deploy.sh production
-        "
+      - name: Update docker-compose with new image
+        run: |
+          ssh ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} "
+            cd /opt/ai-chat-bot
+            sed -i 's|build:|# build:|g' docker-compose.prod.yml
+            sed -i 's|context: .|# context: .|g' docker-compose.prod.yml
+            sed -i 's|dockerfile: docker/Dockerfile|# dockerfile: docker/Dockerfile|g' docker-compose.prod.yml
+            sed -i 's|target: production|# target: production|g' docker-compose.prod.yml
+            sed -i '/# build:/a\    image: ${{ needs.build.outputs.image }}' docker-compose.prod.yml
+          "
 
-    - name: Verify deployment
-      run: |
-        ssh ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} "
-          cd /opt/ai-chat-bot
-          docker-compose -f docker-compose.prod.yml ps
-          docker-compose -f docker-compose.prod.yml logs --tail=50 app
-        "
+      - name: Deploy application
+        run: |
+          ssh ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} "
+            cd /opt/ai-chat-bot
+            chmod +x deploy.sh
+            ./deploy.sh production
+          "
 
-    - name: Send deployment notification
-      if: always() && env.SLACK_WEBHOOK_URL != ''
-      uses: 8398a7/action-slack@v3
-      with:
-        status: ${{ job.status }}
-        channel: '#deployments'
-        text: |
-          🚀 Deployment ${{ job.status }}!
-          Repository: ${{ github.repository }}
-          Branch: ${{ github.ref_name }}
-          Commit: ${{ github.sha }}
-          Author: ${{ github.actor }}
-      env:
-        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+      - name: Verify deployment
+        run: |
+          ssh ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} "
+            cd /opt/ai-chat-bot
+            docker-compose -f docker-compose.prod.yml ps
+            docker-compose -f docker-compose.prod.yml logs --tail=50 app
+          "
+
+      - name: Send deployment notification
+        if: always() && env.SLACK_WEBHOOK_URL != ''
+        uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ job.status }}
+          channel: '#deployments'
+          text: |
+            🚀 Deployment ${{ job.status }}!
+            Repository: ${{ github.repository }}
+            Branch: ${{ github.ref_name }}
+            Commit: ${{ github.sha }}
+            Author: ${{ github.actor }}
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
 
   security-scan:
     name: Security Scan
@@ -326,18 +254,18 @@ jobs:
     if: github.event_name == 'push'
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-    - name: Run Trivy vulnerability scanner
-      uses: aquasecurity/trivy-action@master
-      with:
-        image-ref: ${{ needs.build.outputs.image }}
-        format: 'sarif'
-        output: 'trivy-results.sarif'
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ needs.build.outputs.image }}
+          format: 'sarif'
+          output: 'trivy-results.sarif'
 
-    - name: Upload Trivy scan results to GitHub Security tab
-      uses: github/codeql-action/upload-sarif@v3
-      if: always()
-      with:
-        sarif_file: 'trivy-results.sarif'
+      - name: Upload Trivy scan results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: 'trivy-results.sarif'
