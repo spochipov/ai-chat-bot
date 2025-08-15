@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/restrict-template-expressions */
 import { OpenRouterService, OpenRouterMessage } from './openrouter';
 import { OpenAIService, OpenAIMessage } from './openai';
 import { apiLogger } from '../utils/logger';
@@ -48,7 +49,10 @@ class AIService {
   // Получить провайдера по умолчанию
   public static getDefaultProvider(): AIProvider {
     const envProvider = process.env['AI_PROVIDER'] as AIProvider;
-    if (envProvider && (envProvider === 'openrouter' || envProvider === 'openai')) {
+    if (
+      envProvider &&
+      (envProvider === 'openrouter' || envProvider === 'openai')
+    ) {
       return envProvider;
     }
     return AIService.defaultProvider;
@@ -60,7 +64,9 @@ class AIService {
   }
 
   // Проверить доступность провайдера
-  public static async isProviderAvailable(provider: AIProvider): Promise<boolean> {
+  public static async isProviderAvailable(
+    provider: AIProvider
+  ): Promise<boolean> {
     try {
       switch (provider) {
         case 'openrouter':
@@ -77,10 +83,22 @@ class AIService {
   }
 
   // Получить доступного провайдера
-  public static async getAvailableProvider(preferredProvider?: AIProvider): Promise<AIProvider> {
-    const providers: AIProvider[] = preferredProvider 
-      ? [preferredProvider, ...(['openrouter', 'openai'].filter(p => p !== preferredProvider) as AIProvider[])]
-      : [AIService.getDefaultProvider(), ...(['openrouter', 'openai'].filter(p => p !== AIService.getDefaultProvider()) as AIProvider[])];
+  public static async getAvailableProvider(
+    preferredProvider?: AIProvider
+  ): Promise<AIProvider> {
+    const providers: AIProvider[] = preferredProvider
+      ? [
+          preferredProvider,
+          ...(['openrouter', 'openai'].filter(
+            p => p !== preferredProvider
+          ) as AIProvider[]),
+        ]
+      : [
+          AIService.getDefaultProvider(),
+          ...(['openrouter', 'openai'].filter(
+            p => p !== AIService.getDefaultProvider()
+          ) as AIProvider[]),
+        ];
 
     for (const provider of providers) {
       if (await AIService.isProviderAvailable(provider)) {
@@ -96,8 +114,9 @@ class AIService {
     messages: AIMessage[],
     options: AIRequestOptions = {}
   ): Promise<AIResponse> {
-    const provider = options.provider || await AIService.getAvailableProvider();
-    
+    const provider: AIProvider =
+      options.provider || (await AIService.getAvailableProvider());
+
     apiLogger.info('Sending message to AI provider', {
       provider,
       messageCount: messages.length,
@@ -120,15 +139,23 @@ class AIService {
             frequencyPenalty?: number;
             presencePenalty?: number;
           } = {};
-          
-          if (options.model !== undefined) openRouterOptions.model = options.model;
-          if (options.maxTokens !== undefined) openRouterOptions.maxTokens = options.maxTokens;
-          if (options.temperature !== undefined) openRouterOptions.temperature = options.temperature;
-          if (options.topP !== undefined) openRouterOptions.topP = options.topP;
-          if (options.frequencyPenalty !== undefined) openRouterOptions.frequencyPenalty = options.frequencyPenalty;
-          if (options.presencePenalty !== undefined) openRouterOptions.presencePenalty = options.presencePenalty;
 
-          const response = await OpenRouterService.sendMessage(openRouterMessages, openRouterOptions);
+          if (options.model !== undefined)
+            openRouterOptions.model = options.model;
+          if (options.maxTokens !== undefined)
+            openRouterOptions.maxTokens = options.maxTokens;
+          if (options.temperature !== undefined)
+            openRouterOptions.temperature = options.temperature;
+          if (options.topP !== undefined) openRouterOptions.topP = options.topP;
+          if (options.frequencyPenalty !== undefined)
+            openRouterOptions.frequencyPenalty = options.frequencyPenalty;
+          if (options.presencePenalty !== undefined)
+            openRouterOptions.presencePenalty = options.presencePenalty;
+
+          const response = await OpenRouterService.sendMessage(
+            openRouterMessages,
+            openRouterOptions
+          );
 
           return {
             ...response,
@@ -150,15 +177,22 @@ class AIService {
             frequencyPenalty?: number;
             presencePenalty?: number;
           } = {};
-          
-          if (options.model !== undefined) openAIOptions.model = options.model;
-          if (options.maxTokens !== undefined) openAIOptions.maxTokens = options.maxTokens;
-          if (options.temperature !== undefined) openAIOptions.temperature = options.temperature;
-          if (options.topP !== undefined) openAIOptions.topP = options.topP;
-          if (options.frequencyPenalty !== undefined) openAIOptions.frequencyPenalty = options.frequencyPenalty;
-          if (options.presencePenalty !== undefined) openAIOptions.presencePenalty = options.presencePenalty;
 
-          const response = await OpenAIService.sendMessage(openAIMessages, openAIOptions);
+          if (options.model !== undefined) openAIOptions.model = options.model;
+          if (options.maxTokens !== undefined)
+            openAIOptions.maxTokens = options.maxTokens;
+          if (options.temperature !== undefined)
+            openAIOptions.temperature = options.temperature;
+          if (options.topP !== undefined) openAIOptions.topP = options.topP;
+          if (options.frequencyPenalty !== undefined)
+            openAIOptions.frequencyPenalty = options.frequencyPenalty;
+          if (options.presencePenalty !== undefined)
+            openAIOptions.presencePenalty = options.presencePenalty;
+
+          const response = await OpenAIService.sendMessage(
+            openAIMessages,
+            openAIOptions
+          );
 
           return {
             ...response,
@@ -171,14 +205,18 @@ class AIService {
       }
     } catch (error) {
       apiLogger.error(`Failed to send message via ${provider}`, error);
-      
+
       // Попытка использовать альтернативного провайдера
       if (!options.provider) {
-        const alternativeProvider = provider === 'openrouter' ? 'openai' : 'openrouter';
-        
+        const alternativeProvider: AIProvider =
+          provider === 'openrouter' ? 'openai' : 'openrouter';
+
         if (await AIService.isProviderAvailable(alternativeProvider)) {
           apiLogger.info(`Trying alternative provider: ${alternativeProvider}`);
-          return AIService.sendMessage(messages, { ...options, provider: alternativeProvider });
+          return AIService.sendMessage(messages, {
+            ...options,
+            provider: alternativeProvider,
+          });
         }
       }
 
@@ -192,8 +230,9 @@ class AIService {
     prompt: string = 'Describe this image in detail',
     options: AIRequestOptions = {}
   ): Promise<AIResponse> {
-    const provider = options.provider || await AIService.getAvailableProvider();
-    
+    const provider: AIProvider =
+      options.provider || (await AIService.getAvailableProvider());
+
     // Для анализа изображений предпочитаем модели с поддержкой vision
     const defaultModel = provider === 'openai' ? 'gpt-4o' : 'openai/gpt-4o';
     const model = options.model || defaultModel;
@@ -201,7 +240,11 @@ class AIService {
     try {
       switch (provider) {
         case 'openrouter': {
-          const response = await OpenRouterService.analyzeImage(imageUrl, prompt, model);
+          const response = await OpenRouterService.analyzeImage(
+            imageUrl,
+            prompt,
+            model
+          );
           return {
             ...response,
             provider: 'openrouter',
@@ -209,7 +252,11 @@ class AIService {
         }
 
         case 'openai': {
-          const response = await OpenAIService.analyzeImage(imageUrl, prompt, model);
+          const response = await OpenAIService.analyzeImage(
+            imageUrl,
+            prompt,
+            model
+          );
           return {
             ...response,
             provider: 'openai',
@@ -221,14 +268,20 @@ class AIService {
       }
     } catch (error) {
       apiLogger.error(`Failed to analyze image via ${provider}`, error);
-      
+
       // Попытка использовать альтернативного провайдера
       if (!options.provider) {
-        const alternativeProvider = provider === 'openrouter' ? 'openai' : 'openrouter';
-        
+        const alternativeProvider: AIProvider =
+          provider === 'openrouter' ? 'openai' : 'openrouter';
+
         if (await AIService.isProviderAvailable(alternativeProvider)) {
-          apiLogger.info(`Trying alternative provider for image analysis: ${alternativeProvider}`);
-          return AIService.analyzeImage(imageUrl, prompt, { ...options, provider: alternativeProvider });
+          apiLogger.info(
+            `Trying alternative provider for image analysis: ${alternativeProvider}`
+          );
+          return AIService.analyzeImage(imageUrl, prompt, {
+            ...options,
+            provider: alternativeProvider,
+          });
         }
       }
 
@@ -242,12 +295,17 @@ class AIService {
     prompt: string = 'Analyze this document and provide a summary',
     options: AIRequestOptions = {}
   ): Promise<AIResponse> {
-    const provider = options.provider || await AIService.getAvailableProvider();
+    const provider: AIProvider =
+      options.provider || (await AIService.getAvailableProvider());
 
     try {
       switch (provider) {
         case 'openrouter': {
-          const response = await OpenRouterService.processTextFile(content, prompt, options.model);
+          const response = await OpenRouterService.processTextFile(
+            content,
+            prompt,
+            options.model
+          );
           return {
             ...response,
             provider: 'openrouter',
@@ -255,7 +313,11 @@ class AIService {
         }
 
         case 'openai': {
-          const response = await OpenAIService.processTextFile(content, prompt, options.model);
+          const response = await OpenAIService.processTextFile(
+            content,
+            prompt,
+            options.model
+          );
           return {
             ...response,
             provider: 'openai',
@@ -267,14 +329,20 @@ class AIService {
       }
     } catch (error) {
       apiLogger.error(`Failed to process text file via ${provider}`, error);
-      
+
       // Попытка использовать альтернативного провайдера
       if (!options.provider) {
-        const alternativeProvider = provider === 'openrouter' ? 'openai' : 'openrouter';
-        
+        const alternativeProvider: AIProvider =
+          provider === 'openrouter' ? 'openai' : 'openrouter';
+
         if (await AIService.isProviderAvailable(alternativeProvider)) {
-          apiLogger.info(`Trying alternative provider for text processing: ${alternativeProvider}`);
-          return AIService.processTextFile(content, prompt, { ...options, provider: alternativeProvider });
+          apiLogger.info(
+            `Trying alternative provider for text processing: ${alternativeProvider}`
+          );
+          return AIService.processTextFile(content, prompt, {
+            ...options,
+            provider: alternativeProvider,
+          });
         }
       }
 
@@ -283,13 +351,16 @@ class AIService {
   }
 
   // Получить список доступных моделей
-  public static async getModels(provider?: AIProvider): Promise<Array<{
-    id: string;
-    name?: string;
-    description?: string;
-    provider: AIProvider;
-  }>> {
-    const targetProvider = provider || await AIService.getAvailableProvider();
+  public static async getModels(provider?: AIProvider): Promise<
+    Array<{
+      id: string;
+      name?: string;
+      description?: string;
+      provider: AIProvider;
+    }>
+  > {
+    const targetProvider: AIProvider =
+      provider || (await AIService.getAvailableProvider());
 
     try {
       switch (targetProvider) {
@@ -331,9 +402,17 @@ class AIService {
   ): number {
     switch (provider) {
       case 'openrouter':
-        return OpenRouterService.calculateCost(promptTokens, completionTokens, model);
+        return OpenRouterService.calculateCost(
+          promptTokens,
+          completionTokens,
+          model
+        );
       case 'openai':
-        return OpenAIService.calculateCost(promptTokens, completionTokens, model);
+        return OpenAIService.calculateCost(
+          promptTokens,
+          completionTokens,
+          model
+        );
       default:
         return 0;
     }
@@ -342,7 +421,7 @@ class AIService {
   // Получить модель по умолчанию для провайдера
   public static getDefaultModel(provider?: AIProvider): string {
     const targetProvider = provider || AIService.getDefaultProvider();
-    
+
     switch (targetProvider) {
       case 'openrouter':
         return OpenRouterService.getDefaultModel();
@@ -356,7 +435,7 @@ class AIService {
   // Установить модель по умолчанию для провайдера
   public static setDefaultModel(model: string, provider?: AIProvider): void {
     const targetProvider = provider || AIService.getDefaultProvider();
-    
+
     switch (targetProvider) {
       case 'openrouter':
         OpenRouterService.setDefaultModel(model);
@@ -378,7 +457,10 @@ class AIService {
     ]);
 
     return {
-      openrouter: openrouterHealth.status === 'fulfilled' ? openrouterHealth.value : false,
+      openrouter:
+        openrouterHealth.status === 'fulfilled'
+          ? openrouterHealth.value
+          : false,
       openai: openaiHealth.status === 'fulfilled' ? openaiHealth.value : false,
     };
   }

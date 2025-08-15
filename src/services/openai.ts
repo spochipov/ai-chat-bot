@@ -52,7 +52,8 @@ class OpenAIService {
 
   private constructor() {
     this.apiKey = process.env['OPENAI_API_KEY'] || '';
-    this.baseURL = process.env['OPENAI_BASE_URL'] || 'https://api.openai.com/v1';
+    this.baseURL =
+      process.env['OPENAI_BASE_URL'] || 'https://api.openai.com/v1';
     this.defaultModel = process.env['OPENAI_MODEL'] || 'gpt-4';
 
     if (!this.apiKey) {
