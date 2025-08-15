@@ -60,13 +60,6 @@ else
     SKIP_HEALTH_CHECKS=false
 fi
 
-log "Debug pwd"
-pwd
-log "Debug ls -l"
-ls -l
-log "Debug .env"
-cat .env
-
 # Загрузка переменных окружения
 source .env
 
@@ -118,7 +111,6 @@ done
 
 # Применение миграций базы данных
 log "Running database migrations..."
-cat .env
 docker-compose -f docker-compose.prod.yml run --rm app npx prisma migrate deploy
 
 # Генерация Prisma клиента
