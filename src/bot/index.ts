@@ -29,6 +29,7 @@ import { listUsersHandler } from './handlers/listUsers';
 import { userStatsHandler } from './handlers/userStats';
 import { balanceHandler } from './handlers/balance';
 import { analyticsHandler } from './handlers/analytics';
+import { providerHandler } from './handlers/provider';
 
 // Расширение контекста Telegraf
 interface BotContext extends Context {
@@ -87,6 +88,7 @@ bot.command('deactivate_key', adminMiddleware, deactivateKeyHandler);
 bot.command('list_users', adminMiddleware, listUsersHandler);
 bot.command('user_stats', adminMiddleware, userStatsHandler);
 bot.command('analytics', adminMiddleware, analyticsHandler);
+bot.command('provider', adminMiddleware, providerHandler);
 
 // Обработка callback-запросов
 bot.on('callback_query', callbackHandler);

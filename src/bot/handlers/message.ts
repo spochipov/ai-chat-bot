@@ -2,7 +2,7 @@ import { BotContext } from '../middleware/auth';
 import { handleAccessKeyInput } from './start';
 import { logger } from '../../utils/logger';
 import { DatabaseService } from '../../services/database';
-import { OpenRouterService, OpenRouterMessage } from '../../services/openrouter';
+import { AIService, AIMessage } from '../../services/ai';
 import fs from 'fs';
 import path from 'path';
 
@@ -71,8 +71,8 @@ export const messageHandler = async (ctx: BotContext) => {
         maxContextMessages
       );
 
-      // Формируем контекст для OpenRouter
-      const messages: OpenRouterMessage[] = [];
+      // Формируем контекст для AI сервиса
+      const messages: AIMessage[] = [];
       
       // Добавляем системное сообщение
       messages.push({
@@ -88,8 +88,8 @@ export const messageHandler = async (ctx: BotContext) => {
         });
       });
 
-      // Отправляем запрос в OpenRouter
-      const response = await OpenRouterService.sendMessage(messages);
+      // Отправляем запрос в AI сервис
+      const response = await AIService.sendMessage(messages);
 
       // Проверяем, нужно ли создать файл
       const shouldCreateFile = response.content.length > 4000 || 
@@ -168,10 +168,11 @@ export const messageHandler = async (ctx: BotContext) => {
         content: response.content,
         role: 'ASSISTANT',
         tokens: response.usage.totalTokens,
-        cost: OpenRouterService.calculateCost(
+        cost: AIService.calculateCost(
           response.usage.promptTokens,
           response.usage.completionTokens,
-          response.model
+          response.model,
+          response.provider
         ),
       };
       
@@ -191,10 +192,11 @@ export const messageHandler = async (ctx: BotContext) => {
       await DatabaseService.createUsage({
         userId: ctx.user.id,
         tokens: response.usage.totalTokens,
-        cost: OpenRouterService.calculateCost(
+        cost: AIService.calculateCost(
           response.usage.promptTokens,
           response.usage.completionTokens,
-          response.model
+          response.model,
+          response.provider
         ),
         model: response.model,
         requestType: 'text',
